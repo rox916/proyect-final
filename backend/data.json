@@ -1,0 +1,50 @@
+{
+  "users": {
+    "1": {
+      "id": 1,
+      "name": "Usuario Demo",
+      "email": "demo@example.com",
+      "created_at": "2025-09-25T20:24:26.797566"
+    }
+  },
+  "categories": {
+    "1": {
+      "id": 1,
+      "name": "A, E, I, O, U",
+      "description": "Vocales básicas",
+      "type": "vocales",
+      "user_id": 1,
+      "sample_count": 0,
+      "created_at": "2025-09-25T20:24:26.797566"
+    },
+    "2": {
+      "id": 2,
+      "name": "Números",
+      "description": "Números del 0 al 9",
+      "type": "numeros",
+      "user_id": 1,
+      "sample_count": 0,
+      "created_at": "2025-09-25T20:24:26.797566"
+    },
+    "3": {
+      "id": 3,
+      "name": "Operaciones",
+      "description": "Suma, resta, multiplicación, división",
+      "type": "operaciones",
+      "user_id": 1,
+      "sample_count": 0,
+      "created_at": "2025-09-25T20:24:26.797566"
+    },
+    "4": {
+      "id": 4,
+      "name": "Expresiones Algebraicas",
+      "description": "Variables y operaciones algebraicas",
+      "type": "algebraicas",
+      "user_id": 1,
+      "sample_count": 0,
+      "created_at": "2025-09-25T20:24:26.797566"
+    }
+  },
+  "samples": {},
+  "models": {}
+}

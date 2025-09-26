@@ -1,0 +1,8 @@
+/* Sistema Inteligente de Reconocimiento de Señas - Estilos Globales */
+
+/* Reset y base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
