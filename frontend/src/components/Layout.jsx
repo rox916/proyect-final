@@ -16,59 +16,57 @@ const Layout = ({ children }) => {
   const isActive = (path) => location.pathname === path
 
   return (
-    <>
-      {/* Sidebar */}
-      <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <h1 className="sidebar-title">Sistema Inteligente</h1>
-          <p className="sidebar-subtitle">Reconocimiento de Señas</p>
+    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+      {/* Header Section */}
+      <div className="container-fluid py-4">
+        <div className="row mb-4 align-items-center">
+          <div className="col-md-6">
+            <h1 className="display-4 fw-bold text-dark mb-0">HAND SPEAK AI</h1>
+            <p className="text-dark fs-5">Reconocimiento de Señas</p>
+          </div>
+          <div className="col-md-6">
+            <nav className="navbar navbar-expand-lg navbar-light">
+              <div className="container-fluid">
+                <div className="navbar-nav me-auto">
+                  {navigation.map((item) => (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`nav-link text-primary ${isActive(item.href) ? 'text-decoration-underline' : ''}`}
+                    >
+                      {item.icon} {item.name}
+                    </Link>
+                  ))}
+                </div>
+                <button 
+                  className="btn btn-secondary"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                >
+                  ☰ Menú
+                </button>
+              </div>
+            </nav>
+          </div>
         </div>
-        
-        <nav className="sidebar-nav">
-          {navigation.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={`nav-item ${isActive(item.href) ? 'active' : ''}`}
-              onClick={() => setSidebarOpen(false)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              {item.name}
-            </Link>
-          ))}
-        </nav>
-      </div>
 
-      {/* Main Content */}
-      <div className="main-content">
-        {/* Top Bar */}
-        <div className="top-bar">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="btn btn-secondary btn-sm"
-            >
-              ☰ Menú
-            </button>
-            <h1 className="page-title">
+        {/* Main Content Header */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <h2 className="display-5 fw-bold text-dark mb-0">
               {navigation.find(item => item.href === location.pathname)?.name || 'Sistema'}
-            </h1>
-          </div>
-          
-          <div className="user-info">
-            <div className="user-avatar">U</div>
-            <span className="text-sm">Usuario</span>
-          </div>
-        </div>
-
-        {/* Page Content */}
-        <div className="page-content">
-          <div className="content-wrapper">
-            {children}
+            </h2>
+            <p className="text-muted">U Usuario</p>
           </div>
         </div>
       </div>
-    </>
+
+      {/* Page Content */}
+      <div className="container-fluid py-4">
+        <div className="content-wrapper">
+          {children}
+        </div>
+      </div>
+    </div>
   )
 }
 

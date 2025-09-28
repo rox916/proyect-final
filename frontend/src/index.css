@@ -1,4 +1,5 @@
 /* Sistema Inteligente de Reconocimiento de Señas - Estilos Globales */
+@import 'bootstrap/dist/css/bootstrap.min.css';
 
 /* Reset y base */
 * {
