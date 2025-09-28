@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { Hands } from '@mediapipe/hands'
+import './MediaPipeCamera.css'
 
 const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
   const videoRef = useRef(null)
@@ -18,9 +19,10 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
         // Obtener acceso a la cámara
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
-            width: { ideal: 640 }, 
-            height: { ideal: 480 }, 
-            facingMode: 'user' 
+            width: { ideal: 640, max: 800 }, 
+            height: { ideal: 480, max: 600 }, 
+            facingMode: 'user',
+            aspectRatio: 4/3
           }
         })
 
@@ -58,15 +60,48 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
           const canvas = canvasRef.current
           const ctx = canvas.getContext('2d')
 
-          // Configurar canvas
-          canvas.width = videoRef.current.videoWidth || 640
-          canvas.height = videoRef.current.videoHeight || 480
+          // Configurar canvas con proporciones correctas
+          const videoWidth = videoRef.current.videoWidth || 640
+          const videoHeight = videoRef.current.videoHeight || 480
+          
+          // Mantener proporción 4:3
+          const aspectRatio = 4/3
+          let canvasWidth = videoWidth
+          let canvasHeight = videoWidth / aspectRatio
+          
+          if (canvasHeight > videoHeight) {
+            canvasHeight = videoHeight
+            canvasWidth = videoHeight * aspectRatio
+          }
+          
+          canvas.width = canvasWidth
+          canvas.height = canvasHeight
 
           // Limpiar canvas
           ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-          // Dibujar video
-          ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+          // Dibujar video centrado
+          const videoAspectRatio = videoWidth / videoHeight
+          const canvasAspectRatio = canvasWidth / canvasHeight
+          
+          let drawWidth = canvasWidth
+          let drawHeight = canvasHeight
+          let offsetX = 0
+          let offsetY = 0
+          
+          if (videoAspectRatio > canvasAspectRatio) {
+            // Video es más ancho, ajustar por altura
+            drawHeight = canvasHeight
+            drawWidth = canvasHeight * videoAspectRatio
+            offsetX = (canvasWidth - drawWidth) / 2
+          } else {
+            // Video es más alto, ajustar por ancho
+            drawWidth = canvasWidth
+            drawHeight = canvasWidth / videoAspectRatio
+            offsetY = (canvasHeight - drawHeight) / 2
+          }
+          
+          ctx.drawImage(videoRef.current, offsetX, offsetY, drawWidth, drawHeight)
 
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const landmarks = results.multiHandLandmarks[0]
@@ -175,34 +210,30 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
   }, [])
 
   return (
-    <div className="relative" style={{ width: '100%', height: '500px' }}>
+    <div className="mediapipe-container">
       <video
         ref={videoRef}
         autoPlay
         muted
         playsInline
-        style={{ display: 'none' }}
+        className="mediapipe-video"
       />
       <canvas
         ref={canvasRef}
-        className="w-full h-full rounded border"
-        style={{ 
-          width: '100%', 
-          height: '100%',
-          objectFit: 'cover'
-        }}
+        className="mediapipe-canvas"
       />
       
       {/* Status */}
-      <div className="absolute top-4 right-4 space-y-2">
-        <div className={`px-3 py-1 rounded text-sm ${
-          isInitialized ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+      <div className="mediapipe-status">
+        <div className={`mediapipe-status-item ${
+          isInitialized ? 'mediapipe-status-active' : 'mediapipe-status-loading'
         }`}>
           {isInitialized ? '✓ MediaPipe' : '⏳ Cargando...'}
         </div>
         {error && (
-          <div className="px-3 py-1 rounded text-sm bg-red-500 text-white">
-            Error: {error}
+          <div className="mediapipe-status-item mediapipe-status-error">
+            <div>Error: {error}</div>
+            <div className="mediapipe-error-message">Revisa permisos de cámara</div>
           </div>
         )}
       </div>
