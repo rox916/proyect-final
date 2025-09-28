@@ -2,8 +2,11 @@ import React, { useState } from 'react'
 import MediaPipeCamera from '../components/MediaPipeCamera'
 import AIAgent from '../components/AIAgent'
 import { useStats } from '../hooks/useStats'
+import HeroNavbar from "../components/HeroNavbar";
+
 
 const DataCollection = () => {
+  const [isCameraOn, setIsCameraOn] = useState(true);
   const [currentStep, setCurrentStep] = useState('setup')
   const [selectedCategory, setSelectedCategory] = useState('vocales')
   const [currentSign, setCurrentSign] = useState('A')
@@ -101,65 +104,102 @@ const DataCollection = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="card">
-        <div className="card-header">
-          <h1 className="card-title">Recolección de Datos</h1>
-          <p className="card-subtitle">Captura muestras de señas para entrenar tu modelo</p>
-        </div>
+      <div>
+        <HeroNavbar />
+        <section className="container my-5">
+          {/* Título principal */}
+          <h2 className="fw-bold text-center mb-4">
+            Recolección de Datos
+          </h2>
+          <p className="text-center text-muted mb-5">
+            Captura muestras de señas para entrenar tu modelo
+          </p>
+
+          {/* AI Agent */}
+          <AIAgent
+            type={currentStep === "setup" ? "welcome" : "guidance"}
+            userId={1}
+            categoryName={selectedCategory}
+            onMessage={setAiMessage}
+          />
+        </section>
       </div>
 
-      {/* AI Agent */}
-      <AIAgent
-        type={currentStep === 'setup' ? 'welcome' : 'guidance'}
-        userId={1}
-        categoryName={selectedCategory}
-        onMessage={setAiMessage}
-      />
 
       {/* Setup Step */}
-      {currentStep === 'setup' && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Configuración</h2>
-            <p className="card-subtitle">Selecciona la categoría de señas que quieres entrenar</p>
-          </div>
-          <div className="card-body">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(categories).map(([key, signs]) => (
-                <div key={key} className="border rounded p-4">
-                  <h3 className="font-semibold mb-2 capitalize">{key}</h3>
-                  <p className="text-sm text-secondary mb-3">
-                    {key === 'abecedario' ? 'A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z' :
-                     key === 'algebraicas' ? 'x, y, z, (, ), ^' :
-                     signs.join(', ')}
-                  </p>
-                  {key === 'abecedario' && (
-                    <div className="text-xs text-blue-600 mb-2">
-                      📚 Abecedario completo A-Z
-                    </div>
-                  )}
-                  <div className="text-xs text-gray-500 mb-2">
-                    {signs.length} señas disponibles
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedCategory(key)
-                      setCurrentSign(signs[0])
-                    }}
-                    className={`btn btn-sm w-full ${selectedCategory === key ? 'btn-primary' : 'btn-secondary'}`}
-                  >
-                    {selectedCategory === key ? 'Seleccionado' : 'Seleccionar'}
-                  </button>
-                </div>
-              ))}
+      {currentStep === "setup" && (
+        <section className="py-5 bg-light">
+          <div className="container">
+            {/* Encabezado */}
+            <div className="text-center mb-5">
+              <h2 className="fw-bold">⚙️ Configuración</h2>
+              <p className="text-muted">
+                Selecciona la categoría de señas que quieres entrenar
+              </p>
             </div>
-            <div className="mt-6 text-center">
-              <button onClick={nextStep} className="btn btn-primary btn-lg">
-                Iniciar Captura
+
+            {/* Tarjetas de categorías centradas */}
+            <div className="d-flex justify-content-center flex-wrap gap-4">
+              {Object.entries(categories)
+                .filter(([key]) => key !== "vocales" && key !== "algebraicas")
+                .map(([key, signs]) => (
+                  <div
+                    key={key}
+                    className="card shadow-sm border-0"
+                    style={{
+                      width: "260px",
+                      borderRadius: "12px",
+                    }}
+                  >
+                    <div className="card-body d-flex flex-column justify-content-between">
+                      <div>
+                        <h5 className="fw-bold text-capitalize">{key}</h5>
+                        <p className="text-muted small mb-2">
+                          {key === "abecedario"
+                            ? "A-Z completo"
+                            : signs.slice(0, 6).join(", ") +
+                              (signs.length > 6 ? "..." : "")}
+                        </p>
+
+                        {key === "abecedario" && (
+                          <div className="text-primary small mb-2">
+                            📚 Incluye todas las letras
+                          </div>
+                        )}
+
+                        <span className="badge bg-info text-white mb-3">
+                          {signs.length} señas disponibles
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setSelectedCategory(key);
+                          setCurrentSign(signs[0]);
+                        }}
+                        className={`btn w-100 ${
+                          selectedCategory === key
+                            ? "btn-primary"
+                            : "btn-outline-primary"
+                        }`}
+                      >
+                        {selectedCategory === key
+                          ? "✅ Seleccionado"
+                          : "Seleccionar"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            {/* Botón principal */}
+            <div className="text-center mt-5">
+              <button className="btn btn-success btn-lg px-5" onClick={nextStep}>
+                🚀 Iniciar Captura
               </button>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Capture Step */}
@@ -172,65 +212,104 @@ const DataCollection = () => {
             </p>
           </div>
           <div className="card-body">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* MediaPipe Camera Component */}
-              <MediaPipeCamera
-                onLandmarks={handleLandmarks}
-                onHandDetected={handleHandDetected}
-              />
+            <div className="row g-4">
+              {/* 🔹 Cámara */}
+              <div className="col-md-7">
+                <div className="card shadow-sm">
+                  <div className="card-body text-center">
+                    {isCameraOn ? (
+                      <MediaPipeCamera
+                        onLandmarks={handleLandmarks}
+                        onHandDetected={handleHandDetected}
+                      />
+                    ) : (
+                      <p className="text-muted">📷 Cámara apagada</p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-              {/* Controls */}
-              <div className="space-y-4">
+              {/* 📊 Estado + Catálogo + Controles */}
+              <div className="col-md-5 d-flex flex-column gap-3">
+                {/* Estado */}
                 <div className="card">
                   <div className="card-body">
-                    <h3 className="font-semibold mb-2">Estado de Captura</h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Seña actual:</span>
-                        <span className="font-semibold">{currentSign}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Muestras capturadas:</span>
-                        <span className="font-semibold">{captureCount}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Detección de mano:</span>
-                        <span className={isHandDetected ? 'text-success' : 'text-error'}>
-                          {isHandDetected ? 'Detectada' : 'No detectada'}
-                        </span>
-                      </div>
+                    <h3 className="fw-bold mb-3">Estado de Captura</h3>
+                    <div className="mb-2 d-flex justify-content-between">
+                      <span>Seña actual:</span>
+                      <span className="fw-bold">{currentSign}</span>
+                    </div>
+                    <div className="mb-2 d-flex justify-content-between">
+                      <span>Muestras capturadas:</span>
+                      <span className="fw-bold">{captureCount}</span>
+                    </div>
+                    <div className="d-flex justify-content-between">
+                      <span>Detección de mano:</span>
+                      <span className={isHandDetected ? 'text-success' : 'text-danger'}>
+                        {isHandDetected ? 'Detectada 👋' : 'No detectada ❌'}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                {/* Catálogo */}
+                <div className="card">
+                  <div className="card-header">
+                    <h3 className="card-title">📚 Catálogo de Signos</h3>
+                    <p className="card-subtitle text-muted">
+                      Selecciona rápidamente el signo que quieres capturar
+                    </p>
+                  </div>
+                  <div className="card-body">
+                    <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-2">
+                      {categories[selectedCategory].map((sign) => (
+                        <button
+                          key={sign}
+                          onClick={() => setCurrentSign(sign)}
+                          className={`p-2 border rounded text-lg font-bold transition-all
+                            ${
+                              currentSign === sign
+                                ? "bg-primary text-white shadow"
+                                : "bg-white hover:bg-gray-100"
+                            }`}
+                        >
+                          {sign}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Controles */}
+                <div className="d-flex flex-wrap justify-center gap-3 mt-2">
+                  {/* Botón toggle cámara */}
+                  <button
+                    onClick={() => setIsCameraOn(!isCameraOn)}
+                    className={`btn ${isCameraOn ? "btn-danger" : "btn-success"}`}
+                  >
+                    {isCameraOn ? "Apagar Cámara" : "Encender Cámara"}
+                  </button>
+
                   <button
                     onClick={captureSample}
-                    disabled={!isHandDetected}
-                    className="btn btn-success w-full"
+                    disabled={!isHandDetected || !isCameraOn}
+                    className="btn btn-primary"
                   >
-                    Capturar Muestra
+                    📷 Capturar
                   </button>
-                  
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="btn btn-primary w-full"
-                  >
-                    🔄 Reiniciar Cámara
-                  </button>
-                  
+
                   <button
                     onClick={() => setCurrentStep('review')}
-                    className="btn btn-secondary w-full"
+                    className="btn btn-secondary"
                   >
-                    Revisar Muestras
+                    📑 Revisar
                   </button>
-                  
+
                   <button
                     onClick={resetCollection}
-                    className="btn btn-error w-full"
+                    className="btn btn-outline-danger"
                   >
-                    Reiniciar
+                    🔄 Reiniciar
                   </button>
                 </div>
               </div>
