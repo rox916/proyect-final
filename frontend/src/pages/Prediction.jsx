@@ -5,7 +5,9 @@ import HeroNavbar from "../components/HeroNavbar";
 import Footer from "../components/Footer";
 
 // Imagen fija
-import abecedarioImg from "../assets/abecedario.png";
+import abecedarioImg from "../assets/manos-05.jpg";
+import operacionesImg from "../assets/manos-06.jpg";
+import numerosImg from "../assets/manos-07.jpg";
 
 // Íconos
 import { FaHands, FaChartLine, FaCheckCircle } from "react-icons/fa";
@@ -109,10 +111,21 @@ const Prediction = () => {
         ) : (
           <div className="row g-4">
             {availableModels.map((model, i) => {
-              const bgImage = abecedarioImg;
+              // 🔹 Seleccionar imagen según categoría
+              const bgImage =
+                model.category === "numeros"
+                  ? numerosImg
+                  : model.category === "operaciones"
+                  ? operacionesImg
+                  : abecedarioImg;
 
               return (
-                <div key={model.id} className="col-md-4" data-aos="zoom-in" data-aos-delay={i * 150}>
+                <div
+                  key={model.id}
+                  className="col-md-4"
+                  data-aos="zoom-in"
+                  data-aos-delay={i * 150}
+                >
                   <div
                     className="card model-card shadow-sm position-relative overflow-hidden"
                     style={{
@@ -126,7 +139,7 @@ const Prediction = () => {
                     onClick={() => navigate(`/prediction/${model.category}`)}
                   >
                     {/* Overlay con datos */}
-                    <div className="overlay d-flex flex-column justify-content-center align-items-center text-center p-3">
+                    <div className="overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-center p-3">
                       <h5 className="fw-bold text-white">{model.name}</h5>
                       <p className="text-white-50 small mb-1">
                         Precisión: {(model.accuracy * 100).toFixed(1)}% <br />
@@ -155,6 +168,7 @@ const Prediction = () => {
           </div>
         )}
       </section>
+
 
       {/* 🔹 Cómo Funciona */}
       <section className="container my-5" data-aos="fade-up">
