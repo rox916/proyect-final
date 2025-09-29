@@ -98,20 +98,21 @@ const DataCollection = () => {
       <HeroNavbar />
 
       {/* 🔹 Header y asistente SOLO en setup */}
-      {currentStep !== "capture" && (
+      {currentStep === "setup" && (
         <section className="container my-5">
           <h2 className="fw-bold text-center mb-4">Recolección de Datos</h2>
           <p className="text-center text-muted mb-5">
             Captura muestras de señas para entrenar tu modelo
           </p>
           <AIAgent
-            type={currentStep === "setup" ? "welcome" : "guidance"}
+            type="welcome"
             userId={1}
             categoryName={selectedCategory}
             onMessage={setAiMessage}
           />
         </section>
       )}
+
 
       {/* Setup Step */}
       {currentStep === "setup" && (
@@ -329,37 +330,97 @@ const DataCollection = () => {
     )}
 
       {/* Review Step */}
-      {currentStep === 'review' && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Revisión de Muestras</h2>
-            <p className="card-subtitle">Verifica las muestras capturadas</p>
-          </div>
-          <div className="card-body">
-            <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-4">
+      {currentStep === "review" && (
+        <section className="container my-5">
+          <div className="card shadow-lg border-0 rounded-3">
+            <div className="card-header bg-light d-flex justify-content-between align-items-center">
+              <h2 className="card-title fw-bold mb-0">📋 Revisión de Muestras</h2>
+              <span className="badge bg-primary px-3 py-2">
+                {selectedCategory.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="card-body">
+              {/* Estadísticas globales */}
+              <div className="row text-center mb-4">
+                <div className="col-md-4">
+                  <h4 className="fw-bold text-success">
+                    {stats?.total_samples || 0}
+                  </h4>
+                  <p className="text-muted">Total de muestras</p>
+                </div>
+                <div className="col-md-4">
+                  <h4 className="fw-bold text-primary">
+                    {categories[selectedCategory]?.length || 0}
+                  </h4>
+                  <p className="text-muted">Señas diferentes</p>
+                </div>
+                <div className="col-md-4">
+                  <h4 className="fw-bold text-warning">
+                    {(
+                      (stats?.total_samples || 0) /
+                      (categories[selectedCategory]?.length || 1)
+                    ).toFixed(1)}
+                  </h4>
+                  <p className="text-muted">Promedio por seña</p>
+                </div>
+              </div>
+
+              {/* Revisión de cada seña */}
+              <div className="row g-4 justify-content-center">
                 {categories[selectedCategory].map((sign) => {
-                  const signSamples = stats?.signs?.[sign]?.samples || 0
+                  const signSamples = stats?.signs?.[sign]?.samples || 0;
+
+                  // 🔹 Nueva meta: 25 muestras
+                  const meta = 25;
+                  const progress = Math.min((signSamples / meta) * 100, 100);
+
                   return (
-                    <div key={sign} className="border rounded p-3 text-center">
-                      <div className="text-lg font-bold">{sign}</div>
-                      <div className="text-sm text-secondary">{signSamples} muestras</div>
+                    <div className="col-sm-6 col-md-4 col-lg-3" key={sign}>
+                      <div className="card shadow-sm border-0 text-center p-3 h-100">
+                        <h5 className="fw-bold">{sign}</h5>
+                        <p className="text-muted small mb-2">
+                          {signSamples} muestras
+                        </p>
+                        <div className="progress mb-2" style={{ height: "8px" }}>
+                          <div
+                            className={`progress-bar ${
+                              progress >= 70
+                                ? "bg-success"
+                                : progress >= 30
+                                ? "bg-warning"
+                                : "bg-danger"
+                            }`}
+                            role="progressbar"
+                            style={{ width: `${progress}%` }}
+                          ></div>
+                        </div>
+                        <small className="text-muted">
+                          {progress.toFixed(0)}% de {meta}
+                        </small>
+                      </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
-              <div className="text-center">
-                <p className="mb-4">
-                  Total de muestras capturadas: <strong>{stats?.total_samples || 0}</strong>
-                </p>
-                <button onClick={nextStep} className="btn btn-primary">
-                  Continuar al Entrenamiento
+
+              {/* Botones */}
+              <div className="text-center mt-5">
+                <button onClick={nextStep} className="btn btn-success px-5">
+                  🚀 Continuar al Entrenamiento
+                </button>
+                <button
+                  onClick={() => setCurrentStep("capture")}
+                  className="btn btn-outline-secondary ms-3"
+                >
+                  🔙 Volver a Captura
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </section>
       )}
+
 
       {/* Complete Step */}
       {currentStep === 'complete' && (

@@ -4,8 +4,9 @@ import Home from './pages/Home'
 import DataCollection from './pages/DataCollection'
 import MLTraining from './pages/MLTraining'
 import Prediction from './pages/Prediction'
-import PredictionInterface from './pages/PredictionInterface'  // 👈 NUEVO
+import PredictionInterface from './pages/PredictionInterface'
 import Analytics from './pages/Analytics'
+import PrivateRoute from './components/PrivateRoute' // 👈 lo añadimos
 import './index.css'
 
 function App() {
@@ -13,12 +14,36 @@ function App() {
     <Router>
       <div className="app">
         <Routes>
+          {/* Rutas públicas */}
           <Route path="/" element={<Home />} />
-          <Route path="/data-collection" element={<DataCollection />} />
-          <Route path="/ml-training" element={<MLTraining />} />
           <Route path="/prediction" element={<Prediction />} />
-          <Route path="/prediction/:model" element={<PredictionInterface />} /> {/* 👈 NUEVO */}
-          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/prediction/:model" element={<PredictionInterface />} />
+
+          {/* Rutas protegidas */}
+          <Route
+            path="/data-collection"
+            element={
+              <PrivateRoute>
+                <DataCollection />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/ml-training"
+            element={
+              <PrivateRoute>
+                <MLTraining />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <PrivateRoute>
+                <Analytics />
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </div>
     </Router>

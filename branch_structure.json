@@ -1,0 +1,33 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "fix-cache",
+    "luis",
+    "main",
+    "mi-rama",
+    "origin",
+    "roxv2",
+    "roxy",
+    "victor"
+  ],
+  "parent": {
+    "fix-cache": "main",
+    "luis": "main",
+    "main": null,
+    "mi-rama": "main",
+    "origin": "main",
+    "roxv2": "main",
+    "roxy": "main",
+    "victor": "main"
+  },
+  "order": [
+    "main",
+    "fix-cache",
+    "luis",
+    "mi-rama",
+    "origin",
+    "roxv2",
+    "roxy",
+    "victor"
+  ]
+}
