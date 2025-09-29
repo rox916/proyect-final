@@ -4,6 +4,7 @@ import AIAgent from '../components/AIAgent'
 import { useStats } from '../hooks/useStats'
 import HeroNavbar from "../components/HeroNavbar";
 import Footer from "../components/Footer";
+import SamplesChart from "../components/SamplesChart";
 
 const DataCollection = () => {
   const [isCameraOn, setIsCameraOn] = useState(true);
@@ -18,7 +19,7 @@ const DataCollection = () => {
   const [landmarks, setLandmarks] = useState(null)
   
   // Cargar estadísticas del backend
-  const { stats, loading: statsLoading, refetch: refetchStats } = useStats(selectedCategory)
+  const { stats, loading: statsLoading, refetch: refetchStats, chartData } = useStats(selectedCategory)
 
   const categories = {
     vocales: ['A', 'E', 'I', 'O', 'U'],
@@ -316,6 +317,19 @@ const DataCollection = () => {
         </div>
       </div>
     </div>
+
+        {/* Gráfico de muestras por seña */}
+    <div className="card shadow-sm border-0 rounded-3 mb-4">
+      <div className="card-body" style={{ height: "350px" }}>
+        <h6 className="fw-bold mb-2">📈 Detalle de Muestras por Seña ({selectedCategory.toUpperCase()})</h6>
+        {statsLoading ? (
+          <p className="text-center text-muted small">Cargando gráfico...</p>
+        ) : (
+          <SamplesChart data={chartData} />
+        )}
+      </div>
+    </div>
+
 
         {/* Consejos */}
         <div className="card shadow-sm border-0 rounded-3 text-center">
