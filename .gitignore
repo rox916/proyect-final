@@ -1,0 +1,7 @@
+# Ignorar archivos temporales y generados automáticamente por Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
