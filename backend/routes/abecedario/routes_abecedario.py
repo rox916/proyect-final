@@ -67,6 +67,24 @@ async def create_abecedario_sample(user_id: int, sample: SampleCreate):
             detail=f"Letra '{sample.category_name}' no válida. Letras disponibles: {ABECEDARIO}"
         )
     
+    # Verificar límite de recolección por letra individual
+    try:
+        data = datos_manager.get_samples("abecedario", sample.category_name)
+        user_samples = [
+            s for s in data.get("samples", [])
+            if s.get("user_id") == user_id
+        ]
+        
+        if len(user_samples) >= settings.MAX_SAMPLES_FOR_COLLECTION:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Límite de recolección alcanzado para la letra '{sample.category_name}'. Máximo {settings.MAX_SAMPLES_FOR_COLLECTION} muestras permitidas por letra. Actualmente tienes {len(user_samples)} muestras de la letra '{sample.category_name}'."
+            )
+    except Exception as e:
+        if "Límite de recolección alcanzado" in str(e):
+            raise e
+        # Si hay otro error, continuar (puede ser que no existan datos aún)
+    
     try:
         # Guardar en sistema de archivos separado
         saved_sample = datos_manager.save_sample(
@@ -105,19 +123,37 @@ async def get_abecedario_training_status(user_id: int):
             if sample.get("user_id") == user_id
         ]
         
-        # Contar muestras por letra
+        # Contar muestras por letra (método correcto)
         letter_counts = {}
         for letter in ABECEDARIO:
-            letter_counts[letter] = len([s for s in user_samples if s.get("category_name") == letter])
+            letter_data = datos_manager.get_samples("abecedario", letter)
+            letter_user_samples = [s for s in letter_data.get("samples", []) if s.get("user_id") == user_id]
+            letter_counts[letter] = len(letter_user_samples)
         
         total_samples = len(user_samples)
-        can_train = total_samples >= 10  # Mínimo 10 muestras para entrenar
+        can_train = total_samples >= settings.MIN_SAMPLES_FOR_TRAINING
+        
+        # Verificar límites por letra individual
+        letter_limits = {}
+        for letter in ABECEDARIO:
+            letter_data = datos_manager.get_samples("abecedario", letter)
+            letter_user_samples = [
+                sample for sample in letter_data.get("samples", [])
+                if sample.get("user_id") == user_id
+            ]
+            letter_limits[letter] = {
+                "count": len(letter_user_samples),
+                "max_reached": len(letter_user_samples) >= settings.MAX_SAMPLES_FOR_COLLECTION,
+                "remaining": max(0, settings.MAX_SAMPLES_FOR_COLLECTION - len(letter_user_samples))
+            }
         
         return {
             "total_samples": total_samples,
             "letter_counts": letter_counts,
+            "letter_limits": letter_limits,
             "can_train": can_train,
-            "ready_for_optimal": total_samples >= 50,  # Óptimo 50 muestras
+            "ready_for_optimal": total_samples >= settings.OPTIMAL_SAMPLES_FOR_TRAINING,
+            "max_collection_reached": total_samples >= settings.MAX_SAMPLES_FOR_COLLECTION,
             "abecedario_available": ABECEDARIO
         }
     except Exception as e:

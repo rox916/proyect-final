@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react'
 import { Hands } from '@mediapipe/hands'
 import './MediaPipeCamera.css'
 
-const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
+const MediaPipeCamera = ({ onLandmarks, onHandDetected, onTwoHands, requiresTwoHands = false }) => {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const handsRef = useRef(null)
@@ -48,7 +48,7 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
         })
 
         hands.setOptions({
-          maxNumHands: 1,
+          maxNumHands: requiresTwoHands ? 2 : 1,
           modelComplexity: 0,
           minDetectionConfidence: 0.7,
           minTrackingConfidence: 0.5
@@ -105,27 +105,51 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
 
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const landmarks = results.multiHandLandmarks[0]
+            const landmarksLeft = results.multiHandLandmarks.find(hand => 
+              results.multiHandedness && 
+              results.multiHandedness[results.multiHandLandmarks.indexOf(hand)]?.label === 'Left'
+            )
+            const landmarksRight = results.multiHandLandmarks.find(hand => 
+              results.multiHandedness && 
+              results.multiHandedness[results.multiHandLandmarks.indexOf(hand)]?.label === 'Right'
+            )
             
             // Llamar callbacks
             if (onLandmarks) onLandmarks(landmarks)
             if (onHandDetected) onHandDetected(true)
             
-            // Dibujar landmarks
-            landmarks.forEach((landmark, index) => {
-              const x = landmark.x * canvas.width
-              const y = landmark.y * canvas.height
+            // Si requiere dos manos y tenemos ambas, llamar callback especial
+            if (requiresTwoHands && landmarksLeft && landmarksRight && onTwoHands) {
+              onTwoHands(landmarksLeft, landmarksRight)
+            }
+            
+            // Dibujar landmarks de todas las manos detectadas
+            results.multiHandLandmarks.forEach((handLandmarks, handIndex) => {
+              const isLeftHand = results.multiHandedness && 
+                results.multiHandedness[handIndex]?.label === 'Left'
+              const isRightHand = results.multiHandedness && 
+                results.multiHandedness[handIndex]?.label === 'Right'
               
-              // Punto rojo
-              ctx.beginPath()
-              ctx.arc(x, y, 6, 0, 2 * Math.PI)
-              ctx.fillStyle = '#FF0000'
-              ctx.fill()
-              ctx.strokeStyle = '#FFFFFF'
-              ctx.lineWidth = 2
-              ctx.stroke()
+              // Color diferente para cada mano
+              const pointColor = isLeftHand ? '#00FF00' : isRightHand ? '#FF0000' : '#FFFF00'
+              const lineColor = isLeftHand ? '#00AA00' : isRightHand ? '#AA0000' : '#AAAA00'
+              
+              handLandmarks.forEach((landmark, index) => {
+                const x = landmark.x * canvas.width
+                const y = landmark.y * canvas.height
+                
+                // Punto de color específico
+                ctx.beginPath()
+                ctx.arc(x, y, 6, 0, 2 * Math.PI)
+                ctx.fillStyle = pointColor
+                ctx.fill()
+                ctx.strokeStyle = '#FFFFFF'
+                ctx.lineWidth = 2
+                ctx.stroke()
+              })
             })
 
-            // Dibujar conexiones
+            // Dibujar conexiones para cada mano
             const connections = [
               [0, 1], [1, 2], [2, 3], [3, 4], // Pulgar
               [0, 5], [5, 6], [6, 7], [7, 8], // Índice
@@ -135,21 +159,30 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
               [0, 17] // Base
             ]
 
-            ctx.strokeStyle = '#00FF00'
-            ctx.lineWidth = 3
-            connections.forEach(([start, end]) => {
-              if (landmarks[start] && landmarks[end]) {
-                ctx.beginPath()
-                ctx.moveTo(
-                  landmarks[start].x * canvas.width,
-                  landmarks[start].y * canvas.height
-                )
-                ctx.lineTo(
-                  landmarks[end].x * canvas.width,
-                  landmarks[end].y * canvas.height
-                )
-                ctx.stroke()
-              }
+            results.multiHandLandmarks.forEach((handLandmarks, handIndex) => {
+              const isLeftHand = results.multiHandedness && 
+                results.multiHandedness[handIndex]?.label === 'Left'
+              const isRightHand = results.multiHandedness && 
+                results.multiHandedness[handIndex]?.label === 'Right'
+              
+              const lineColor = isLeftHand ? '#00AA00' : isRightHand ? '#AA0000' : '#AAAA00'
+              
+              ctx.strokeStyle = lineColor
+              ctx.lineWidth = 3
+              connections.forEach(([start, end]) => {
+                if (handLandmarks[start] && handLandmarks[end]) {
+                  ctx.beginPath()
+                  ctx.moveTo(
+                    handLandmarks[start].x * canvas.width,
+                    handLandmarks[start].y * canvas.height
+                  )
+                  ctx.lineTo(
+                    handLandmarks[end].x * canvas.width,
+                    handLandmarks[end].y * canvas.height
+                  )
+                  ctx.stroke()
+                }
+              })
             })
 
             console.log('✅ Mano detectada con landmarks')

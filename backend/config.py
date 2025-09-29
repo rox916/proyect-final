@@ -28,8 +28,9 @@ class Settings:
     
     # Machine Learning
     DEFAULT_MODEL_TYPE = "RandomForest"
-    MIN_SAMPLES_FOR_TRAINING = 11
-    OPTIMAL_SAMPLES_FOR_TRAINING = 50
+    MIN_SAMPLES_FOR_TRAINING = 2
+    MAX_SAMPLES_FOR_COLLECTION = 25
+    OPTIMAL_SAMPLES_FOR_TRAINING = 25
 
 # Instancia global de configuración
 settings = Settings()

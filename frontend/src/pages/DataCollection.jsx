@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import MediaPipeCamera from '../components/MediaPipeCamera'
 import AIAgent from '../components/AIAgent'
 import { useStats } from '../hooks/useStats'
@@ -6,7 +6,7 @@ import HeroNavbar from "../components/HeroNavbar";
 import Footer from "../components/Footer";
 
 const DataCollection = () => {
-  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isCameraOn, setIsCameraOn] = useState(true)
   const [currentStep, setCurrentStep] = useState('setup')
   const [selectedCategory, setSelectedCategory] = useState('vocales')
   const [currentSign, setCurrentSign] = useState('A')
@@ -16,6 +16,14 @@ const DataCollection = () => {
   const [aiMessage, setAiMessage] = useState('')
   const [isHandDetected, setIsHandDetected] = useState(false)
   const [landmarks, setLandmarks] = useState(null)
+  const [landmarksLeft, setLandmarksLeft] = useState(null)
+  const [landmarksRight, setLandmarksRight] = useState(null)
+  const [bothHandsDetected, setBothHandsDetected] = useState(false)
+  const [autoCapture, setAutoCapture] = useState(false)
+  const [lastCaptureTime, setLastCaptureTime] = useState(0)
+  const [captureInterval, setCaptureInterval] = useState(null)
+  const [composedNumber, setComposedNumber] = useState('')
+  const [isComposing, setIsComposing] = useState(false)
   
   // Cargar estadísticas del backend
   const { stats, loading: statsLoading, refetch: refetchStats } = useStats(selectedCategory)
@@ -33,13 +41,160 @@ const DataCollection = () => {
   }
 
   const handleHandDetected = (detected) => {
+    console.log('👋 Mano detectada:', detected)
     setIsHandDetected(detected)
   }
 
+  const handleTwoHands = (leftLandmarks, rightLandmarks) => {
+    console.log('🤟 Dos manos detectadas:', {
+      leftLandmarks: leftLandmarks?.length,
+      rightLandmarks: rightLandmarks?.length
+    })
+    setLandmarksLeft(leftLandmarks)
+    setLandmarksRight(rightLandmarks)
+    setBothHandsDetected(true)
+    // También actualizar el estado de detección de mano individual
+    setLandmarks(leftLandmarks) // Usar mano izquierda como principal
+    setIsHandDetected(true)
+  }
+
+  // Determinar si la categoría actual requiere dos manos
+  const requiresTwoHands = selectedCategory === 'numeros' || selectedCategory === 'operaciones'
+  
+  // Verificar si se alcanzó el límite de muestras
+  const isLimitReached = () => {
+    return stats?.letter_limits?.[currentSign]?.max_reached || 
+           stats?.vocal_limits?.[currentSign]?.max_reached || 
+           stats?.numero_limits?.[currentSign]?.max_reached || 
+           stats?.operacion_limits?.[currentSign]?.max_reached
+  }
+
+  // Activar/desactivar captura automática
+  const toggleAutoCapture = () => {
+    const newAutoCapture = !autoCapture
+    console.log('🔄 Cambiando captura automática:', {
+      from: autoCapture,
+      to: newAutoCapture,
+      requiresTwoHands,
+      bothHandsDetected,
+      isHandDetected
+    })
+    
+    setAutoCapture(newAutoCapture)
+    if (newAutoCapture) {
+      const handMessage = requiresTwoHands 
+        ? 'Mantén ambas manos en la cámara' 
+        : 'Mantén la mano en la cámara'
+      setAiMessage(`🔄 Captura automática activada - ${handMessage}`)
+    } else {
+      setAiMessage('⏸️ Captura automática desactivada')
+    }
+  }
+
+  // Iniciar composición de número
+  const startComposing = () => {
+    if (selectedCategory === 'numeros') {
+      setIsComposing(true)
+      setComposedNumber('')
+      setAiMessage('🔢 Modo composición activado - Presiona los dígitos en orden')
+    }
+  }
+
+  // Agregar dígito al número compuesto
+  const addDigit = (digit) => {
+    setComposedNumber(prev => prev + digit)
+    setAiMessage(`🔢 Número compuesto: ${composedNumber + digit}`)
+  }
+
+  // Finalizar composición
+  const finishComposing = () => {
+    if (composedNumber) {
+      setCurrentSign(composedNumber)
+      setIsComposing(false)
+      setAiMessage(`✅ Número ${composedNumber} seleccionado`)
+    }
+  }
+
+  // Cancelar composición
+  const cancelComposing = () => {
+    setIsComposing(false)
+    setComposedNumber('')
+    setAiMessage('❌ Composición cancelada')
+  }
+
+  // Detener captura automática cuando se alcanza el límite
+  useEffect(() => {
+    if (isLimitReached() && autoCapture) {
+      setAutoCapture(false)
+      setAiMessage('🚫 Límite alcanzado - Captura automática desactivada')
+    }
+  }, [stats, currentSign, autoCapture])
+
+  // Limpiar estado cuando se cambia de categoría o signo
+  useEffect(() => {
+    setAutoCapture(false)
+    setLandmarksLeft(null)
+    setLandmarksRight(null)
+    setBothHandsDetected(false)
+    setIsComposing(false)
+    setComposedNumber('')
+  }, [selectedCategory, currentSign])
+
+  // Captura automática
+  useEffect(() => {
+    if (!autoCapture || isLimitReached()) {
+      return
+    }
+    console.log('🔄 Iniciando captura automática...', {
+      autoCapture,
+      requiresTwoHands,
+      bothHandsDetected,
+      isHandDetected,
+      landmarksLeft: landmarksLeft?.length,
+      landmarksRight: landmarksRight?.length,
+      landmarks: landmarks?.length
+    })
+
+    const interval = setInterval(() => {
+      // Verificar condiciones de manera más eficiente
+      const hasValidLandmarks = requiresTwoHands 
+        ? (bothHandsDetected && landmarksLeft && landmarksRight && 
+           landmarksLeft.length === 21 && landmarksRight.length === 21)
+        : (isHandDetected && landmarks && landmarks.length === 21)
+      
+      if (hasValidLandmarks && !isLimitReached()) {
+        console.log('✅ Capturando muestra automáticamente...')
+        captureSample()
+      }
+    }, 1000) // Capturar cada 1 segundo (más rápido)
+
+    return () => {
+      console.log('🛑 Deteniendo captura automática...')
+      clearInterval(interval)
+    }
+  }, [autoCapture, currentSign]) // Solo dependencias esenciales
+
   const captureSample = async () => {
-    if (landmarks && landmarks.length === 21) {
+    // Evitar capturas simultáneas
+    if (isCapturing) return
+    
+    // Verificar si hemos alcanzado el límite
+    if (isLimitReached()) {
+      setAiMessage('🚫 Límite de muestras alcanzado para este elemento')
+      return
+    }
+
+    // Verificar si tenemos los landmarks necesarios
+    const hasValidLandmarks = requiresTwoHands 
+      ? (landmarksLeft && landmarksRight && landmarksLeft.length === 21 && landmarksRight.length === 21)
+      : (landmarks && landmarks.length === 21)
+
+    if (hasValidLandmarks) {
+      setIsCapturing(true)
       const newSample = {
-        landmarks: landmarks,
+        landmarks: requiresTwoHands ? landmarksLeft : landmarks, // Usar landmarks de mano izquierda como principal
+        landmarks_left: requiresTwoHands ? landmarksLeft : null,
+        landmarks_right: requiresTwoHands ? landmarksRight : null,
         category_name: currentSign,
         timestamp: new Date().toISOString()
       }
@@ -55,19 +210,28 @@ const DataCollection = () => {
         })
         
         if (response.ok) {
-          const savedSample = await response.json()
-          setSamples([...samples, savedSample])
-          setCaptureCount(captureCount + 1)
-          setAiMessage(`Muestra ${captureCount + 1} capturada para la letra ${currentSign}. ¡Excelente!`)
+          // Actualizar contador inmediatamente para feedback visual más rápido
+          const newCount = captureCount + 1
+          setCaptureCount(newCount)
           
-          // Refrescar estadísticas
-          refetchStats()
+          // Mensaje optimizado para captura automática
+          if (autoCapture) {
+            setAiMessage(`🔄 ${newCount}/25 muestras capturadas`)
+          } else {
+            setAiMessage(`✅ Muestra ${newCount} capturada para ${currentSign}`)
+          }
+          
+          // Refrescar estadísticas de forma asíncrona (no bloquea la UI)
+          setTimeout(() => refetchStats(), 100)
         } else {
-          setAiMessage('Error al guardar la muestra. Inténtalo de nuevo.')
+          const errorData = await response.json()
+          setAiMessage(`❌ ${errorData.detail || 'Error al guardar'}`)
         }
       } catch (error) {
         console.error('Error enviando muestra:', error)
         setAiMessage('Error de conexión. Verifica que el backend esté funcionando.')
+      } finally {
+        setIsCapturing(false)
       }
     } else {
       setAiMessage('Por favor, asegúrate de que tu mano esté visible y realiza la seña correctamente.')
@@ -183,105 +347,201 @@ const DataCollection = () => {
                       ⬅ Volver
                     </button>
                     <div>
-                      <h2 className="card-title fw-bold mb-0">📸 Captura de Datos</h2>
+                      <h5 className="fw-bold mb-0">📸 Captura de Datos</h5>
                       <small className="text-muted">
-                        Capturando: <strong>{currentSign}</strong> | Muestras: <strong>{captureCount}</strong>
+                        {selectedCategory.toUpperCase()} - {currentSign}
                       </small>
                     </div>
                   </div>
-                  <span className="badge bg-primary px-3 py-2">
-                    {selectedCategory.toUpperCase()}
-                  </span>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge bg-primary">
+                      {captureCount}/25 muestras
+                    </span>
+                  </div>
                 </div>
 
                 <div className="card-body">
                   <div className="row g-4">
-                    <div className="col-md-8">
-                      <div className="card shadow-sm border-0 rounded-3 h-100">
-                        <div className="card-body text-center">
-                          {isCameraOn ? (
-                            <MediaPipeCamera
-                              onLandmarks={handleLandmarks}
-                              onHandDetected={handleHandDetected}
-                            />
-                          ) : (
-                            <p className="text-muted">📷 Cámara apagada</p>
-                          )}
+                    <div className="col-md-7">
+                      <div className="card shadow-sm">
+                        <div className="card-body">
+                          <MediaPipeCamera
+                            onLandmarks={handleLandmarks}
+                            onHandDetected={handleHandDetected}
+                            onTwoHands={handleTwoHands}
+                            requiresTwoHands={requiresTwoHands}
+                          />
                         </div>
                       </div>
                     </div>
 
-                    <div className="col-md-4 d-flex flex-column gap-3">
-                      <div className="card border-0 shadow-sm rounded-3">
-                        <div className="card-body">
-                          <h5 className="fw-bold mb-3">⚡ Estado de Captura</h5>
-                          <div className="mb-2 d-flex justify-content-between">
-                            <span>Seña actual:</span>
-                            <span className="fw-bold text-primary">{currentSign}</span>
-                          </div>
-                          <div className="mb-2 d-flex justify-content-between">
-                            <span>Muestras capturadas:</span>
-                            <span className="fw-bold text-success">{captureCount}</span>
-                          </div>
+                    <div className="col-md-5">
+                      <div className="card shadow-sm">
+                        <div className="card-body text-center">
+                          <h5 className="fw-bold mb-3">Estado del Sistema</h5>
+                          <p>
+                            Estado:{" "}
+                            {isCameraOn ? (
+                              <span className="text-success fw-bold">Activo ✅</span>
+                            ) : (
+                              <span className="text-danger fw-bold">Inactivo ❌</span>
+                            )}
+                          </p>
+                          
+                          {/* Detección de manos */}
                           <div className="d-flex justify-content-between">
-                            <span>Detección de mano:</span>
-                            <span className={isHandDetected ? "text-success fw-bold" : "text-danger fw-bold"}>
-                              {isHandDetected ? "✅ Detectada" : "❌ No detectada"}
-                            </span>
+                            <span>Detección:</span>
+                            {requiresTwoHands ? (
+                              <div className="d-flex gap-2">
+                                <span className={`badge ${landmarksLeft ? 'bg-success' : 'bg-secondary'}`}>
+                                  {landmarksLeft ? '✅ Izq' : '⏳ Izq'}
+                                </span>
+                                <span className={`badge ${landmarksRight ? 'bg-success' : 'bg-secondary'}`}>
+                                  {landmarksRight ? '✅ Der' : '⏳ Der'}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className={isHandDetected ? "text-success fw-bold" : "text-danger fw-bold"}>
+                                {isHandDetected ? "✅ Detectada" : "❌ No detectada"}
+                              </span>
+                            )}
                           </div>
-                        </div>
-                      </div>
+                          
+                          {/* Indicador de captura automática */}
+                          <div className="d-flex justify-content-between">
+                            <span>Captura automática:</span>
+                            <div className="d-flex align-items-center gap-2">
+                              <span className={`badge ${autoCapture ? 'bg-success' : 'bg-secondary'}`}>
+                                {autoCapture ? '🔄 Activa' : '⏸️ Inactiva'}
+                              </span>
+                              {autoCapture && (
+                                <span className="badge bg-info">
+                                  {requiresTwoHands ? '2 manos' : '1 mano'}
+                                </span>
+                              )}
+                              {isCapturing && (
+                                <span className="badge bg-warning pulse">
+                                  📸 Capturando...
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Indicador de composición de números */}
+                          {selectedCategory === 'numeros' && isComposing && (
+                            <div className="d-flex justify-content-between">
+                              <span>Número compuesto:</span>
+                              <span className="badge bg-info">
+                                {composedNumber || 'Vacío'}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Catálogo de señas */}
+                          <div className="mt-4">
+                            <h6 className="fw-bold mb-3">📚 Catálogo de Señas</h6>
+                            <div className="d-flex flex-wrap gap-2">
+                              {categories[selectedCategory].map((sign) => {
+                                const count = stats?.letter_limits?.[sign]?.count || 
+                                             stats?.vocal_limits?.[sign]?.count || 
+                                             stats?.numero_limits?.[sign]?.count || 
+                                             stats?.operacion_limits?.[sign]?.count || 0
+                                const isMaxReached = stats?.letter_limits?.[sign]?.max_reached || 
+                                                    stats?.vocal_limits?.[sign]?.max_reached || 
+                                                    stats?.numero_limits?.[sign]?.max_reached || 
+                                                    stats?.operacion_limits?.[sign]?.max_reached || false
+                                
+                                const handleClick = () => {
+                                  if (selectedCategory === 'numeros' && isComposing) {
+                                    addDigit(sign)
+                                  } else {
+                                    setCurrentSign(sign)
+                                  }
+                                }
+                                
+                                return (
+                                  <button
+                                    key={sign}
+                                    onClick={handleClick}
+                                    className={`btn btn-sm px-3 fw-bold ${
+                                      currentSign === sign 
+                                        ? "btn-primary" 
+                                        : isMaxReached 
+                                            ? "btn-outline-danger" 
+                                            : isComposing && selectedCategory === 'numeros'
+                                                ? "btn-outline-info"
+                                                : "btn-outline-secondary"
+                                    }`}
+                                    title={isComposing && selectedCategory === 'numeros' 
+                                      ? `Agregar dígito ${sign}` 
+                                      : `${count}/25 muestras`}
+                                  >
+                                    {sign} {isMaxReached && "🔒"}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            
+                            {/* Botones de composición para números */}
+                            {selectedCategory === 'numeros' && (
+                              <div className="mt-3 d-flex gap-2 justify-content-center">
+                                {!isComposing ? (
+                                  <button 
+                                    onClick={startComposing}
+                                    className="btn btn-outline-info btn-sm"
+                                  >
+                                    🔢 Componer Número
+                                  </button>
+                                ) : (
+                                  <>
+                                    <button 
+                                      onClick={finishComposing}
+                                      disabled={!composedNumber}
+                                      className="btn btn-success btn-sm"
+                                    >
+                                      ✅ Finalizar
+                                    </button>
+                                    <button 
+                                      onClick={cancelComposing}
+                                      className="btn btn-outline-danger btn-sm"
+                                    >
+                                      ❌ Cancelar
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
 
-                      <div className="card border-0 shadow-sm rounded-3">
-                        <div className="card-header bg-light">
-                          <h5 className="card-title mb-0">📚 Catálogo de Signos</h5>
-                        </div>
-                        <div className="card-body">
-                          <div className="d-flex flex-wrap gap-2">
-                            {categories[selectedCategory].map((sign) => (
+                          <div className="d-grid gap-2 mt-3">
+                            {/* Botón de captura automática */}
+                            {!isComposing && (
                               <button
-                                key={sign}
-                                onClick={() => setCurrentSign(sign)}
-                                className={`btn btn-sm px-3 fw-bold ${
-                                  currentSign === sign ? "btn-primary" : "btn-outline-secondary"
-                                }`}
+                                onClick={toggleAutoCapture}
+                                disabled={!isCameraOn || 
+                                  (requiresTwoHands ? !bothHandsDetected : !isHandDetected) ||
+                                  isLimitReached() || isCapturing}
+                                className={`btn ${autoCapture ? 'btn-success' : 'btn-outline-success'} ${isCapturing ? 'pulse' : ''}`}
                               >
-                                {sign}
+                                {isCapturing ? '📸 Capturando...' : (autoCapture ? '⏸️ Pausar Auto' : '🔄 Auto Captura')}
                               </button>
-                            ))}
+                            )}
+
+                            <button
+                              onClick={() => setCurrentStep("review")}
+                              className="btn btn-secondary"
+                            >
+                              📑 Revisar
+                            </button>
+
+                            <button
+                              onClick={resetCollection}
+                              className="btn btn-outline-danger"
+                            >
+                              🔄 Reiniciar
+                            </button>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="d-flex flex-wrap justify-content-center gap-3 mt-2">
-                        <button
-                          onClick={() => setIsCameraOn(!isCameraOn)}
-                          className={`btn ${isCameraOn ? "btn-danger" : "btn-success"}`}
-                        >
-                          {isCameraOn ? "🔴 Apagar Cámara" : "🟢 Encender Cámara"}
-                        </button>
-
-                        <button
-                          onClick={captureSample}
-                          disabled={!isHandDetected || !isCameraOn}
-                          className="btn btn-primary"
-                        >
-                          📸 Capturar
-                        </button>
-
-                        <button
-                          onClick={() => setCurrentStep("review")}
-                          className="btn btn-secondary"
-                        >
-                          📑 Revisar
-                        </button>
-
-                        <button
-                          onClick={resetCollection}
-                          className="btn btn-outline-danger"
-                        >
-                          🔄 Reiniciar
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -289,71 +549,81 @@ const DataCollection = () => {
               </div>
             </div>
           </div>
+
+          {/* Extra Capture Info */}
+          <div className="container my-4">
+            {/* Barra de progreso por letra actual */}
+            <div className="card shadow-sm border-0 rounded-3 mb-4">
+              <div className="card-body">
+                <h6 className="fw-bold mb-2">📊 Progreso de {currentSign}</h6>
+                <div className="progress mb-2">
+                  <div
+                    className={`progress-bar progress-bar-striped ${
+                      stats?.letter_limits?.[currentSign]?.max_reached || 
+                      stats?.vocal_limits?.[currentSign]?.max_reached || 
+                      stats?.numero_limits?.[currentSign]?.max_reached || 
+                      stats?.operacion_limits?.[currentSign]?.max_reached 
+                      ? 'bg-danger' : 'bg-info'
+                    }`}
+                    role="progressbar"
+                    style={{
+                      width: `${((stats?.letter_limits?.[currentSign]?.count || 
+                                 stats?.vocal_limits?.[currentSign]?.count || 
+                                 stats?.numero_limits?.[currentSign]?.count || 
+                                 stats?.operacion_limits?.[currentSign]?.count || 0) / 25) * 100}%`
+                    }}
+                    aria-valuenow={stats?.letter_limits?.[currentSign]?.count || 
+                                   stats?.vocal_limits?.[currentSign]?.count || 
+                                   stats?.numero_limits?.[currentSign]?.count || 
+                                   stats?.operacion_limits?.[currentSign]?.count || 0}
+                    aria-valuemin="0"
+                    aria-valuemax="25"
+                  ></div>
+                </div>
+                <div className="d-flex justify-content-between">
+                  <small className="text-muted">
+                    Muestras de {currentSign}: {stats?.letter_limits?.[currentSign]?.count || 
+                                               stats?.vocal_limits?.[currentSign]?.count || 
+                                               stats?.numero_limits?.[currentSign]?.count || 
+                                               stats?.operacion_limits?.[currentSign]?.count || 0}/25
+                  </small>
+                  <small className="text-muted">
+                    {stats?.letter_limits?.[currentSign]?.max_reached || 
+                     stats?.vocal_limits?.[currentSign]?.max_reached || 
+                     stats?.numero_limits?.[currentSign]?.max_reached || 
+                     stats?.operacion_limits?.[currentSign]?.max_reached 
+                     ? '🔒 Límite alcanzado' : '🔄 En progreso'}
+                  </small>
+                </div>
+              </div>
+            </div>
+
+
+            {/* Mensaje del AI */}
+            {aiMessage && (
+              <div className="alert alert-info">
+                <strong>🤖 Asistente:</strong> {aiMessage}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-{/* Extra Capture Info */}
-{currentStep === 'capture' && (
-  <div className="container my-4">
-    {/* Barra de progreso */}
-    <div className="card shadow-sm border-0 rounded-3 mb-4">
-      <div className="card-body">
-        <h6 className="fw-bold mb-2">📊 Progreso de Captura</h6>
-        <div className="progress">
-          <div
-            className="progress-bar progress-bar-striped bg-success"
-            role="progressbar"
-            style={{
-              width: `${(captureCount / categories[selectedCategory].length) * 100}%`
-            }}
-            aria-valuenow={captureCount}
-            aria-valuemin="0"
-            aria-valuemax={categories[selectedCategory].length}
-          >
-            {captureCount}/{categories[selectedCategory].length} muestras
-          </div>
-        </div>
-      </div>
-    </div>
-
-        {/* Consejos */}
-        <div className="card shadow-sm border-0 rounded-3 text-center">
-          <div className="card-body">
-            <h6 className="fw-bold mb-2">📌 Consejos de Captura</h6>
-            <p className="text-muted small mb-1">✔ Asegúrate de buena iluminación</p>
-            <p className="text-muted small mb-1">✔ Mantén la mano dentro del recuadro</p>
-            <p className="text-muted small">✔ Haz el gesto de forma clara y estable</p>
-          </div>
-        </div>
-      </div>
-    )}
-
       {/* Review Step */}
       {currentStep === 'review' && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Revisión de Muestras</h2>
-            <p className="card-subtitle">Verifica las muestras capturadas</p>
-          </div>
-          <div className="card-body">
-            <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-4">
-                {categories[selectedCategory].map((sign) => {
-                  const signSamples = stats?.signs?.[sign]?.samples || 0
-                  return (
-                    <div key={sign} className="border rounded p-3 text-center">
-                      <div className="text-lg font-bold">{sign}</div>
-                      <div className="text-sm text-secondary">{signSamples} muestras</div>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="text-center">
-                <p className="mb-4">
-                  Total de muestras capturadas: <strong>{stats?.total_samples || 0}</strong>
-                </p>
-                <button onClick={nextStep} className="btn btn-primary">
-                  Continuar al Entrenamiento
+        <div className="container my-5">
+          <div className="card">
+            <div className="card-body text-center">
+              <h2 className="fw-bold mb-4">📊 Resumen de Captura</h2>
+              <p className="text-muted mb-4">
+                Has capturado {samples.length} muestras para la categoría {selectedCategory}
+              </p>
+              <div className="d-flex justify-content-center gap-3">
+                <button className="btn btn-primary" onClick={nextStep}>
+                  Continuar
+                </button>
+                <button className="btn btn-secondary" onClick={resetCollection}>
+                  Reiniciar
                 </button>
               </div>
             </div>
@@ -380,7 +650,8 @@ const DataCollection = () => {
           </div>
         </div>
       )}
-            {/* 🔹 Footer */}
+
+      {/* 🔹 Footer */}
       <Footer />
     </div>
   )

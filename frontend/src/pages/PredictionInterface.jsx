@@ -15,15 +15,41 @@ const PredictionInterface = () => {
   const [aiFeedback, setAiFeedback] = useState("");
   const [isHandDetected, setIsHandDetected] = useState(false);
   const [landmarks, setLandmarks] = useState(null);
+  const [landmarksLeft, setLandmarksLeft] = useState(null);
+  const [landmarksRight, setLandmarksRight] = useState(null);
+  const [bothHandsDetected, setBothHandsDetected] = useState(false);
   const [lastPredictionTime, setLastPredictionTime] = useState(0);
   const [handStableTime, setHandStableTime] = useState(0);
+
+  // Determinar si la categoría actual requiere dos manos
+  const requiresTwoHands = model === 'numeros' || model === 'operaciones';
+
+  // Funciones para manejar detección de manos
+  const handleHandDetected = (detected) => {
+    setIsHandDetected(detected);
+  };
+
+  const handleTwoHands = (leftLandmarks, rightLandmarks) => {
+    setLandmarksLeft(leftLandmarks);
+    setLandmarksRight(rightLandmarks);
+    setBothHandsDetected(true);
+    // También actualizar el estado de detección de mano individual
+    setLandmarks(leftLandmarks); // Usar mano izquierda como principal
+    setIsHandDetected(true);
+  };
 
   // 🔹 Predicciones
   useEffect(() => {
     const now = Date.now();
     if (!isPredicting || !model) return;
 
-    if (isHandDetected && landmarks && landmarks.length === 21) {
+    // Verificar condiciones según el tipo de categoría
+    const hasValidLandmarks = requiresTwoHands 
+      ? (bothHandsDetected && landmarksLeft && landmarksRight && 
+         landmarksLeft.length === 21 && landmarksRight.length === 21)
+      : (isHandDetected && landmarks && landmarks.length === 21);
+
+    if (hasValidLandmarks) {
       if (handStableTime === 0) {
         setHandStableTime(now);
         return;
@@ -32,18 +58,36 @@ const PredictionInterface = () => {
       if (now - lastPredictionTime < 1000) return;
 
       setLastPredictionTime(now);
-      predictWithBackend(landmarks, model);
+      
+      // Enviar los landmarks apropiados según el tipo
+      if (requiresTwoHands) {
+        predictWithBackend(landmarksLeft, model, landmarksLeft, landmarksRight);
+      } else {
+        predictWithBackend(landmarks, model);
+      }
     }
-  }, [landmarks, isHandDetected, isPredicting, model]);
+  }, [landmarks, landmarksLeft, landmarksRight, isHandDetected, bothHandsDetected, isPredicting, model, requiresTwoHands]);
 
-  const predictWithBackend = async (landmarks, category) => {
+  const predictWithBackend = async (landmarks, category, landmarksLeft = null, landmarksRight = null) => {
     try {
+      // Preparar el cuerpo de la petición según el tipo
+      let requestBody;
+      if (requiresTwoHands && landmarksLeft && landmarksRight) {
+        requestBody = {
+          landmarks: landmarksLeft,
+          landmarks_left: landmarksLeft,
+          landmarks_right: landmarksRight
+        };
+      } else {
+        requestBody = landmarks;
+      }
+
       const response = await fetch(
         `http://localhost:8000/api/v1/${category}/predict/1`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(landmarks),
+          body: JSON.stringify(requestBody),
         }
       );
 
@@ -97,7 +141,9 @@ const PredictionInterface = () => {
                 {isPredicting ? (
                   <MediaPipeCamera
                     onLandmarks={setLandmarks}
-                    onHandDetected={setIsHandDetected}
+                    onHandDetected={handleHandDetected}
+                    onTwoHands={handleTwoHands}
+                    requiresTwoHands={requiresTwoHands}
                   />
                 ) : (
                   <p className="text-muted text-center">
@@ -120,14 +166,43 @@ const PredictionInterface = () => {
                     <span className="text-danger fw-bold">Inactivo ❌</span>
                   )}
                 </p>
-                <p>
-                  Mano:{" "}
-                  {isHandDetected ? (
-                    <span className="text-success">Detectada 👋</span>
-                  ) : (
-                    <span className="text-muted">No detectada</span>
-                  )}
-                </p>
+                {requiresTwoHands ? (
+                  <div>
+                    <p>
+                      Mano Izquierda:{" "}
+                      {landmarksLeft ? (
+                        <span className="text-success">✅ Detectada</span>
+                      ) : (
+                        <span className="text-muted">⏳ Esperando</span>
+                      )}
+                    </p>
+                    <p>
+                      Mano Derecha:{" "}
+                      {landmarksRight ? (
+                        <span className="text-success">✅ Detectada</span>
+                      ) : (
+                        <span className="text-muted">⏳ Esperando</span>
+                      )}
+                    </p>
+                    <p>
+                      Estado:{" "}
+                      {bothHandsDetected ? (
+                        <span className="text-success fw-bold">Listo para predecir 🤟</span>
+                      ) : (
+                        <span className="text-warning">Esperando ambas manos</span>
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <p>
+                    Mano:{" "}
+                    {isHandDetected ? (
+                      <span className="text-success">Detectada 👋</span>
+                    ) : (
+                      <span className="text-muted">No detectada</span>
+                    )}
+                  </p>
+                )}
                 <div className="d-grid gap-2 mt-3">
                   {!isPredicting ? (
                     <button

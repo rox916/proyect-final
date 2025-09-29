@@ -13,7 +13,7 @@ from datos_manager import datos_manager
 
 router = APIRouter()
 
-# Números disponibles
+# Números disponibles (0-9)
 NUMEROS = [str(i) for i in range(10)]  # 0-9
 
 @router.get("/numeros", response_model=List[str])
@@ -57,11 +57,38 @@ async def get_numeros_samples(user_id: int):
 @router.post("/numeros/samples/{user_id}", response_model=Sample)
 async def create_numeros_sample(user_id: int, sample: SampleCreate):
     """Crear muestra de número"""
-    if sample.category_name not in NUMEROS:
+    # Validar que el número compuesto solo contenga dígitos del 0-9
+    if not sample.category_name.isdigit():
         raise HTTPException(
             status_code=400,
-            detail=f"Número '{sample.category_name}' no válido. Números disponibles: {NUMEROS}"
+            detail=f"Número '{sample.category_name}' no válido. Solo se permiten números compuestos por dígitos del 0-9."
         )
+    
+    # Verificar que todos los dígitos estén en la lista de dígitos válidos
+    for digit in sample.category_name:
+        if digit not in NUMEROS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Dígito '{digit}' no válido en el número '{sample.category_name}'. Dígitos disponibles: {NUMEROS}"
+            )
+    
+    # Verificar límite de recolección por número individual
+    try:
+        data = datos_manager.get_samples("numeros", sample.category_name)
+        user_samples = [
+            s for s in data.get("samples", [])
+            if s.get("user_id") == user_id
+        ]
+        
+        if len(user_samples) >= settings.MAX_SAMPLES_FOR_COLLECTION:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Límite de recolección alcanzado para el número '{sample.category_name}'. Máximo {settings.MAX_SAMPLES_FOR_COLLECTION} muestras permitidas por número. Actualmente tienes {len(user_samples)} muestras del número '{sample.category_name}'."
+            )
+    except Exception as e:
+        if "Límite de recolección alcanzado" in str(e):
+            raise e
+        # Si hay otro error, continuar (puede ser que no existan datos aún)
     
     try:
         # Guardar en sistema de archivos separado
@@ -69,13 +96,17 @@ async def create_numeros_sample(user_id: int, sample: SampleCreate):
             category="numeros",
             sign=sample.category_name,
             landmarks=sample.landmarks,
-            user_id=user_id
+            user_id=user_id,
+            landmarks_left=sample.landmarks_left,
+            landmarks_right=sample.landmarks_right
         )
         
         # Crear objeto Sample para respuesta
         new_sample = Sample(
             id=saved_sample["id"],
             landmarks=sample.landmarks,
+            landmarks_left=sample.landmarks_left,
+            landmarks_right=sample.landmarks_right,
             category_name=sample.category_name,
             user_id=user_id,
             category_id=3,  # ID de la categoría de números
@@ -94,58 +125,82 @@ async def create_numeros_sample(user_id: int, sample: SampleCreate):
 @router.get("/numeros/training-status/{user_id}")
 async def get_numeros_training_status(user_id: int):
     """Obtener estado de entrenamiento de números"""
-    user_samples = [
-        sample for sample in store.samples.values()
-        if sample.get("user_id") == user_id and sample.get("category_name") in NUMEROS
-    ]
-    
-    # Contar muestras por número
-    numero_counts = {}
-    for numero in NUMEROS:
-        numero_counts[numero] = len([s for s in user_samples if s.get("category_name") == numero])
-    
-    total_samples = len(user_samples)
-    can_train = total_samples >= settings.MIN_SAMPLES_FOR_TRAINING
-    
-    return {
-        "total_samples": total_samples,
-        "numero_counts": numero_counts,
-        "can_train": can_train,
-        "ready_for_optimal": total_samples >= settings.OPTIMAL_SAMPLES_FOR_TRAINING,
-        "numeros_available": NUMEROS
-    }
+    try:
+        data = datos_manager.get_samples("numeros")
+        user_samples = [
+            sample for sample in data.get("samples", [])
+            if sample.get("user_id") == user_id
+        ]
+        
+        # Contar muestras por número (método correcto)
+        numero_counts = {}
+        for numero in NUMEROS:
+            numero_data = datos_manager.get_samples("numeros", numero)
+            numero_user_samples = [s for s in numero_data.get("samples", []) if s.get("user_id") == user_id]
+            numero_counts[numero] = len(numero_user_samples)
+        
+        total_samples = len(user_samples)
+        can_train = total_samples >= settings.MIN_SAMPLES_FOR_TRAINING
+        
+        # Verificar límites por número individual
+        numero_limits = {}
+        for numero in NUMEROS:
+            numero_data = datos_manager.get_samples("numeros", numero)
+            numero_user_samples = [
+                sample for sample in numero_data.get("samples", [])
+                if sample.get("user_id") == user_id
+            ]
+            numero_limits[numero] = {
+                "count": len(numero_user_samples),
+                "max_reached": len(numero_user_samples) >= settings.MAX_SAMPLES_FOR_COLLECTION,
+                "remaining": max(0, settings.MAX_SAMPLES_FOR_COLLECTION - len(numero_user_samples))
+            }
+        
+        return {
+            "total_samples": total_samples,
+            "numero_counts": numero_counts,
+            "numero_limits": numero_limits,
+            "can_train": can_train,
+            "ready_for_optimal": total_samples >= settings.OPTIMAL_SAMPLES_FOR_TRAINING,
+            "max_collection_reached": total_samples >= settings.MAX_SAMPLES_FOR_COLLECTION,
+            "numeros_available": NUMEROS
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error obteniendo estado: {str(e)}"
+        )
 
 @router.post("/numeros/predict/{user_id}", response_model=PredictionResult)
-async def predict_numero(user_id: int, landmarks: List[Dict[str, float]]):
-    """Predecir número basado en landmarks usando ML"""
+async def predict_numero(user_id: int, landmarks: List[Dict[str, float]], landmarks_left: List[Dict[str, float]] = None, landmarks_right: List[Dict[str, float]] = None):
+    """Predecir número basado en landmarks usando el modelo entrenado (dos manos)"""
     try:
         from ml_model import models
         
-        # Usar modelo de ML para números
-        model = models["numeros"]
-        result = model.predict(landmarks)
-        
-        if "error" in result:
+        # Verifica si el modelo está entrenado
+        if "numeros" not in models:
             return PredictionResult(
-                prediction=result["prediction"],
-                confidence=result["confidence"],
-                model_id=2,
+                prediction="Modelo no entrenado",
+                confidence=0.0,
+                model_id=3,
                 timestamp=datetime.now().isoformat()
             )
+        
+        model = models["numeros"]
+        result = model.predict(landmarks, landmarks_left, landmarks_right)   # 👈 Usa el modelo entrenado con dos manos
         
         return PredictionResult(
             prediction=result["prediction"],
             confidence=result["confidence"],
-            model_id=2,
+            model_id=3,
             timestamp=datetime.now().isoformat()
         )
-            
+    
     except Exception as e:
-        print(f"Error en predicción ML: {e}")
         return PredictionResult(
             prediction="Error ML",
             confidence=0.0,
-            model_id=2,
+            model_id=3,
             timestamp=datetime.now().isoformat()
         )
 
@@ -189,11 +244,20 @@ async def get_numeros_stats(user_id: int):
 @router.delete("/numeros/samples/{user_id}/{numero}")
 async def delete_numero_samples(user_id: int, numero: str):
     """Eliminar todas las muestras de un número específico"""
-    if numero not in NUMEROS:
+    # Validar que el número compuesto solo contenga dígitos del 0-9
+    if not numero.isdigit():
         raise HTTPException(
             status_code=400,
-            detail=f"Número '{numero}' no válido"
+            detail=f"Número '{numero}' no válido. Solo se permiten números compuestos por dígitos del 0-9."
         )
+    
+    # Verificar que todos los dígitos estén en la lista de dígitos válidos
+    for digit in numero:
+        if digit not in NUMEROS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Dígito '{digit}' no válido en el número '{numero}'. Dígitos disponibles: {NUMEROS}"
+            )
     
     try:
         success = datos_manager.delete_sign_samples("numeros", numero)

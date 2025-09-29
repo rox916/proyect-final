@@ -32,7 +32,9 @@ class Category(BaseModel):
 class Sample(BaseModel):
     """Muestra de seña capturada"""
     id: int
-    landmarks: List[Landmark]
+    landmarks: List[Landmark]  # Landmarks de una mano (21 puntos)
+    landmarks_left: Optional[List[Landmark]] = None  # Landmarks de mano izquierda (21 puntos)
+    landmarks_right: Optional[List[Landmark]] = None  # Landmarks de mano derecha (21 puntos)
     category_name: str
     user_id: int
     category_id: int
@@ -54,7 +56,9 @@ class Model(BaseModel):
 
 class SampleCreate(BaseModel):
     """Crear nueva muestra"""
-    landmarks: List[Landmark]
+    landmarks: List[Landmark]  # Landmarks de una mano (21 puntos)
+    landmarks_left: Optional[List[Landmark]] = None  # Landmarks de mano izquierda (21 puntos)
+    landmarks_right: Optional[List[Landmark]] = None  # Landmarks de mano derecha (21 puntos)
     category_name: str
     timestamp: Optional[str] = None
 

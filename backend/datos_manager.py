@@ -29,7 +29,7 @@ class DatosManager:
         for category_dir in self.categories.values():
             os.makedirs(os.path.join(self.base_dir, category_dir), exist_ok=True)
     
-    def save_sample(self, category: str, sign: str, landmarks: List[Dict], user_id: int = 1):
+    def save_sample(self, category: str, sign: str, landmarks: List[Dict], user_id: int = 1, landmarks_left: List[Dict] = None, landmarks_right: List[Dict] = None):
         """Guardar muestra en archivo específico de la categoría"""
         try:
             category_dir = self.categories.get(category)
@@ -62,6 +62,12 @@ class DatosManager:
                 "created_at": datetime.now().isoformat()
             }
             
+            # Agregar landmarks de dos manos si están disponibles
+            if landmarks_left:
+                new_sample["landmarks_left"] = landmarks_left
+            if landmarks_right:
+                new_sample["landmarks_right"] = landmarks_right
+            
             # Agregar muestra
             data["samples"].append(new_sample)
             data["last_updated"] = datetime.now().isoformat()
@@ -71,7 +77,8 @@ class DatosManager:
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False, default=str)
             
-            print(f" Muestra guardada: {category}/{sign} - Total: {len(data['samples'])}")
+            hand_type = "dos manos" if landmarks_left and landmarks_right else "una mano"
+            print(f" Muestra guardada: {category}/{sign} ({hand_type}) - Total: {len(data['samples'])}")
             return new_sample
             
         except Exception as e:
@@ -153,6 +160,53 @@ class DatosManager:
             print(f" Error obteniendo estadísticas: {e}")
             return {"error": str(e)}
     
+    def get_user_total_samples(self, user_id: int):
+        """Obtener el total de muestras de un usuario en todas las categorías"""
+        try:
+            total_samples = 0
+            user_samples = []
+            
+            for category in self.categories.keys():
+                data = self.get_samples(category)
+                category_user_samples = [
+                    sample for sample in data.get("samples", [])
+                    if sample.get("user_id") == user_id
+                ]
+                user_samples.extend(category_user_samples)
+                total_samples += len(category_user_samples)
+            
+            return {
+                "total_samples": total_samples,
+                "samples": user_samples,
+                "by_category": self._get_samples_by_category(user_id)
+            }
+            
+        except Exception as e:
+            print(f" Error obteniendo total de muestras del usuario: {e}")
+            return {"total_samples": 0, "samples": [], "by_category": {}}
+    
+    def _get_samples_by_category(self, user_id: int):
+        """Obtener muestras del usuario agrupadas por categoría"""
+        try:
+            by_category = {}
+            
+            for category in self.categories.keys():
+                data = self.get_samples(category)
+                category_user_samples = [
+                    sample for sample in data.get("samples", [])
+                    if sample.get("user_id") == user_id
+                ]
+                by_category[category] = {
+                    "count": len(category_user_samples),
+                    "samples": category_user_samples
+                }
+            
+            return by_category
+            
+        except Exception as e:
+            print(f" Error agrupando muestras por categoría: {e}")
+            return {}
+
     def delete_sign_samples(self, category: str, sign: str):
         """Eliminar todas las muestras de una seña específica"""
         try:

@@ -51,9 +51,12 @@ class SignRecognitionModel:
                     
                     for sample in data.get('samples', []):
                         landmarks = sample.get('landmarks', [])
-                        if landmarks:
+                        landmarks_left = sample.get('landmarks_left')
+                        landmarks_right = sample.get('landmarks_right')
+                        
+                        if landmarks or (landmarks_left and landmarks_right):
                             # Convertir landmarks a formato numérico
-                            features = self._extract_features(landmarks)
+                            features = self._extract_features(landmarks, landmarks_left, landmarks_right)
                             if features is not None:
                                 X.append(features)
                                 y.append(sign_name)
@@ -64,34 +67,89 @@ class SignRecognitionModel:
         
         return np.array(X), np.array(y)
     
-    def _extract_features(self, landmarks: List) -> Optional[np.ndarray]:
-        """Extraer características de los landmarks"""
+    def _extract_features(self, landmarks: List, landmarks_left: List = None, landmarks_right: List = None) -> Optional[np.ndarray]:
+        """Extraer características de los landmarks (una o dos manos)"""
         try:
             features = []
             
-            for landmark in landmarks:
-                if isinstance(landmark, str):
-                    # Parsear string "x=0.5 y=0.5 z=0.0"
-                    import re
-                    coords = re.findall(r'x=([\d.-]+)\s+y=([\d.-]+)\s+z=([\d.-]+)', landmark)
-                    if coords:
-                        x, y, z = coords[0]
-                        features.extend([float(x), float(y), float(z)])
+            # Procesar landmarks de una mano (formato original)
+            if landmarks:
+                for landmark in landmarks:
+                    if isinstance(landmark, str):
+                        # Parsear string "x=0.5 y=0.5 z=0.0"
+                        import re
+                        coords = re.findall(r'x=([\d.-]+(?:e[+-]?\d+)?)\s+y=([\d.-]+(?:e[+-]?\d+)?)\s+z=([\d.-]+(?:e[+-]?\d+)?)', landmark)
+                        if coords:
+                            x, y, z = coords[0]
+                            features.extend([float(x), float(y), float(z)])
+                        else:
+                            print(f"Error parseando landmark: {landmark}")
+                            return None
+                    elif isinstance(landmark, dict):
+                        # Formato dict {"x": 0.5, "y": 0.5, "z": 0.0}
+                        features.extend([
+                            landmark.get('x', 0),
+                            landmark.get('y', 0),
+                            landmark.get('z', 0)
+                        ])
                     else:
                         return None
-                elif isinstance(landmark, dict):
-                    # Formato dict {"x": 0.5, "y": 0.5, "z": 0.0}
-                    features.extend([
-                        landmark.get('x', 0),
-                        landmark.get('y', 0),
-                        landmark.get('z', 0)
-                    ])
-                else:
-                    return None
             
-            # Asegurar que tenemos exactamente 21 landmarks * 3 coordenadas = 63 features
-            if len(features) != 63:
-                return None
+            # Procesar landmarks de dos manos si están disponibles
+            if landmarks_left and landmarks_right:
+                # Limpiar features anteriores si tenemos dos manos
+                features = []
+                
+                # Procesar mano izquierda
+                for landmark in landmarks_left:
+                    if isinstance(landmark, str):
+                        # Parsear string "x=0.5 y=0.5 z=0.0"
+                        import re
+                        coords = re.findall(r'x=([\d.-]+(?:e[+-]?\d+)?)\s+y=([\d.-]+(?:e[+-]?\d+)?)\s+z=([\d.-]+(?:e[+-]?\d+)?)', landmark)
+                        if coords:
+                            x, y, z = coords[0]
+                            features.extend([float(x), float(y), float(z)])
+                        else:
+                            print(f"Error parseando landmark izquierdo: {landmark}")
+                            return None
+                    elif isinstance(landmark, dict):
+                        features.extend([
+                            landmark.get('x', 0),
+                            landmark.get('y', 0),
+                            landmark.get('z', 0)
+                        ])
+                    else:
+                        return None
+                
+                # Procesar mano derecha
+                for landmark in landmarks_right:
+                    if isinstance(landmark, str):
+                        # Parsear string "x=0.5 y=0.5 z=0.0"
+                        import re
+                        coords = re.findall(r'x=([\d.-]+(?:e[+-]?\d+)?)\s+y=([\d.-]+(?:e[+-]?\d+)?)\s+z=([\d.-]+(?:e[+-]?\d+)?)', landmark)
+                        if coords:
+                            x, y, z = coords[0]
+                            features.extend([float(x), float(y), float(z)])
+                        else:
+                            print(f"Error parseando landmark derecho: {landmark}")
+                            return None
+                    elif isinstance(landmark, dict):
+                        features.extend([
+                            landmark.get('x', 0),
+                            landmark.get('y', 0),
+                            landmark.get('z', 0)
+                        ])
+                    else:
+                        return None
+                
+                # Para dos manos: 21 landmarks * 2 manos * 3 coordenadas = 126 features
+                if len(features) != 126:
+                    return None
+                    
+            else:
+                # Para una mano: 21 landmarks * 3 coordenadas = 63 features
+                if len(features) != 63:
+                    return None
                 
             return np.array(features)
             
@@ -166,8 +224,8 @@ class SignRecognitionModel:
                 "samples": 0
             }
     
-    def predict(self, landmarks: List) -> Dict[str, any]:
-        """Hacer predicción con el modelo entrenado"""
+    def predict(self, landmarks: List, landmarks_left: List = None, landmarks_right: List = None) -> Dict[str, any]:
+        """Hacer predicción con el modelo entrenado (una o dos manos)"""
         try:
             if not self.is_trained:
                 # Intentar cargar modelo guardado
@@ -183,7 +241,7 @@ class SignRecognitionModel:
                     }
             
             # Extraer características
-            features = self._extract_features(landmarks)
+            features = self._extract_features(landmarks, landmarks_left, landmarks_right)
             if features is None:
                 return {
                     "prediction": "Landmarks inválidos",

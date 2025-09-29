@@ -10,7 +10,7 @@ export const useStats = (category, userId = 1) => {
     setError(null)
     
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/${category}/stats/${userId}`)
+      const response = await fetch(`http://localhost:8000/api/v1/${category}/training-status/${userId}`)
       
       if (response.ok) {
         const data = await response.json()

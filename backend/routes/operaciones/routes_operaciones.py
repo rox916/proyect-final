@@ -71,19 +71,41 @@ async def create_operaciones_sample(user_id: int, sample: SampleCreate):
             detail=f"Operación '{sample.category_name}' no válida. Operaciones disponibles: {OPERACIONES}"
         )
     
+    # Verificar límite de recolección por operación individual
+    try:
+        data = datos_manager.get_samples("operaciones", sample.category_name)
+        user_samples = [
+            s for s in data.get("samples", [])
+            if s.get("user_id") == user_id
+        ]
+        
+        if len(user_samples) >= settings.MAX_SAMPLES_FOR_COLLECTION:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Límite de recolección alcanzado para la operación '{sample.category_name}'. Máximo {settings.MAX_SAMPLES_FOR_COLLECTION} muestras permitidas por operación. Actualmente tienes {len(user_samples)} muestras de la operación '{sample.category_name}'."
+            )
+    except Exception as e:
+        if "Límite de recolección alcanzado" in str(e):
+            raise e
+        # Si hay otro error, continuar (puede ser que no existan datos aún)
+    
     try:
         # Guardar en sistema de archivos separado
         saved_sample = datos_manager.save_sample(
             category="operaciones",
             sign=sample.category_name,
             landmarks=sample.landmarks,
-            user_id=user_id
+            user_id=user_id,
+            landmarks_left=sample.landmarks_left,
+            landmarks_right=sample.landmarks_right
         )
         
         # Crear objeto Sample para respuesta
         new_sample = Sample(
             id=saved_sample["id"],
             landmarks=sample.landmarks,
+            landmarks_left=sample.landmarks_left,
+            landmarks_right=sample.landmarks_right,
             category_name=sample.category_name,
             user_id=user_id,
             category_id=4,  # ID de la categoría de operaciones
@@ -110,19 +132,37 @@ async def get_operaciones_training_status(user_id: int):
             if sample.get("user_id") == user_id
         ]
         
-        # Contar muestras por operación
+        # Contar muestras por operación (método correcto)
         operacion_counts = {}
         for operacion in OPERACIONES:
-            operacion_counts[operacion] = len([s for s in user_samples if s.get("category_name") == operacion])
+            operacion_data = datos_manager.get_samples("operaciones", operacion)
+            operacion_user_samples = [s for s in operacion_data.get("samples", []) if s.get("user_id") == user_id]
+            operacion_counts[operacion] = len(operacion_user_samples)
         
         total_samples = len(user_samples)
         can_train = total_samples >= settings.MIN_SAMPLES_FOR_TRAINING
         
+        # Verificar límites por operación individual
+        operacion_limits = {}
+        for operacion in OPERACIONES:
+            operacion_data = datos_manager.get_samples("operaciones", operacion)
+            operacion_user_samples = [
+                sample for sample in operacion_data.get("samples", [])
+                if sample.get("user_id") == user_id
+            ]
+            operacion_limits[operacion] = {
+                "count": len(operacion_user_samples),
+                "max_reached": len(operacion_user_samples) >= settings.MAX_SAMPLES_FOR_COLLECTION,
+                "remaining": max(0, settings.MAX_SAMPLES_FOR_COLLECTION - len(operacion_user_samples))
+            }
+        
         return {
             "total_samples": total_samples,
             "operacion_counts": operacion_counts,
+            "operacion_limits": operacion_limits,
             "can_train": can_train,
             "ready_for_optimal": total_samples >= settings.OPTIMAL_SAMPLES_FOR_TRAINING,
+            "max_collection_reached": total_samples >= settings.MAX_SAMPLES_FOR_COLLECTION,
             "operaciones_available": OPERACIONES
         }
     except Exception as e:
@@ -172,25 +212,36 @@ async def train_operaciones_model(user_id: int):
 
 
 @router.post("/operaciones/predict/{user_id}", response_model=PredictionResult)
-async def predict_operacion(user_id: int, landmarks: List[Dict[str, float]]):
-    """Predecir operación basada en landmarks"""
+async def predict_operacion(user_id: int, landmarks: List[Dict[str, float]], landmarks_left: List[Dict[str, float]] = None, landmarks_right: List[Dict[str, float]] = None):
+    """Predecir operación basada en landmarks usando el modelo entrenado (dos manos)"""
     try:
         from ml_model import models
         
-        # Usar modelo entrenado para operaciones
+        # Verifica si el modelo está entrenado
+        if "operaciones" not in models:
+            return PredictionResult(
+                prediction="Modelo no entrenado",
+                confidence=0.0,
+                model_id=4,
+                timestamp=datetime.now().isoformat()
+            )
+        
         model = models["operaciones"]
-        result = model.predict(landmarks)
+        result = model.predict(landmarks, landmarks_left, landmarks_right)   # 👈 Usa el modelo entrenado con dos manos
         
         return PredictionResult(
             prediction=result["prediction"],
             confidence=result["confidence"],
-            model_id=3,
+            model_id=4,
             timestamp=datetime.now().isoformat()
         )
+    
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error en predicción: {str(e)}"
+        return PredictionResult(
+            prediction="Error ML",
+            confidence=0.0,
+            model_id=4,
+            timestamp=datetime.now().isoformat()
         )
 
 
