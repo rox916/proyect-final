@@ -3,7 +3,7 @@ import MediaPipeCamera from '../components/MediaPipeCamera'
 import AIAgent from '../components/AIAgent'
 import { useStats } from '../hooks/useStats'
 import HeroNavbar from "../components/HeroNavbar";
-
+import Footer from "../components/Footer";
 
 const DataCollection = () => {
   const [isCameraOn, setIsCameraOn] = useState(true);
@@ -62,15 +62,6 @@ const DataCollection = () => {
           
           // Refrescar estadísticas
           refetchStats()
-          
-          // Cambiar a la siguiente seña
-          const currentIndex = categories[selectedCategory].indexOf(currentSign)
-          if (currentIndex < categories[selectedCategory].length - 1) {
-            setCurrentSign(categories[selectedCategory][currentIndex + 1])
-            setAiMessage(`Ahora realiza la seña para la letra ${categories[selectedCategory][currentIndex + 1]}`)
-          } else {
-            setAiMessage('¡Has completado todas las señas de esta categoría!')
-          }
         } else {
           setAiMessage('Error al guardar la muestra. Inténtalo de nuevo.')
         }
@@ -103,19 +94,16 @@ const DataCollection = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <HeroNavbar />
+      {/* 🔹 Navbar siempre visible */}
+      <HeroNavbar />
+
+      {/* 🔹 Header y asistente SOLO en setup */}
+      {currentStep !== "capture" && (
         <section className="container my-5">
-          {/* Título principal */}
-          <h2 className="fw-bold text-center mb-4">
-            Recolección de Datos
-          </h2>
+          <h2 className="fw-bold text-center mb-4">Recolección de Datos</h2>
           <p className="text-center text-muted mb-5">
             Captura muestras de señas para entrenar tu modelo
           </p>
-
-          {/* AI Agent */}
           <AIAgent
             type={currentStep === "setup" ? "welcome" : "guidance"}
             userId={1}
@@ -123,22 +111,17 @@ const DataCollection = () => {
             onMessage={setAiMessage}
           />
         </section>
-      </div>
-
+      )}
 
       {/* Setup Step */}
       {currentStep === "setup" && (
         <section className="py-5 bg-light">
           <div className="container">
-            {/* Encabezado */}
             <div className="text-center mb-5">
               <h2 className="fw-bold">⚙️ Configuración</h2>
-              <p className="text-muted">
-                Selecciona la categoría de señas que quieres entrenar
-              </p>
-            </div>
+              <p className="text-muted">Selecciona la categoría de señas que quieres entrenar</p>
+            </div>  
 
-            {/* Tarjetas de categorías centradas */}
             <div className="d-flex justify-content-center flex-wrap gap-4">
               {Object.entries(categories)
                 .filter(([key]) => key !== "vocales" && key !== "algebraicas")
@@ -146,10 +129,7 @@ const DataCollection = () => {
                   <div
                     key={key}
                     className="card shadow-sm border-0"
-                    style={{
-                      width: "260px",
-                      borderRadius: "12px",
-                    }}
+                    style={{ width: "260px", borderRadius: "12px" }}
                   >
                     <div className="card-body d-flex flex-column justify-content-between">
                       <div>
@@ -157,42 +137,28 @@ const DataCollection = () => {
                         <p className="text-muted small mb-2">
                           {key === "abecedario"
                             ? "A-Z completo"
-                            : signs.slice(0, 6).join(", ") +
-                              (signs.length > 6 ? "..." : "")}
+                            : signs.slice(0, 6).join(", ") + (signs.length > 6 ? "..." : "")}
                         </p>
-
-                        {key === "abecedario" && (
-                          <div className="text-primary small mb-2">
-                            📚 Incluye todas las letras
-                          </div>
-                        )}
-
                         <span className="badge bg-info text-white mb-3">
                           {signs.length} señas disponibles
                         </span>
                       </div>
-
                       <button
                         onClick={() => {
                           setSelectedCategory(key);
                           setCurrentSign(signs[0]);
                         }}
                         className={`btn w-100 ${
-                          selectedCategory === key
-                            ? "btn-primary"
-                            : "btn-outline-primary"
+                          selectedCategory === key ? "btn-primary" : "btn-outline-primary"
                         }`}
                       >
-                        {selectedCategory === key
-                          ? "✅ Seleccionado"
-                          : "Seleccionar"}
+                        {selectedCategory === key ? "✅ Seleccionado" : "Seleccionar"}
                       </button>
                     </div>
                   </div>
                 ))}
             </div>
 
-            {/* Botón principal */}
             <div className="text-center mt-5">
               <button className="btn btn-success btn-lg px-5" onClick={nextStep}>
                 🚀 Iniciar Captura
@@ -204,119 +170,163 @@ const DataCollection = () => {
 
       {/* Capture Step */}
       {currentStep === 'capture' && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Captura de Datos</h2>
-            <p className="card-subtitle">
-              Capturando: {currentSign} | Muestras: {captureCount}
-            </p>
-          </div>
-          <div className="card-body">
-            <div className="row g-4">
-              {/* 🔹 Cámara */}
-              <div className="col-md-7">
-                <div className="card shadow-sm">
-                  <div className="card-body text-center">
-                    {isCameraOn ? (
-                      <MediaPipeCamera
-                        onLandmarks={handleLandmarks}
-                        onHandDetected={handleHandDetected}
-                      />
-                    ) : (
-                      <p className="text-muted">📷 Cámara apagada</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* 📊 Estado + Catálogo + Controles */}
-              <div className="col-md-5 d-flex flex-column gap-3">
-                {/* Estado */}
-                <div className="card">
-                  <div className="card-body">
-                    <h3 className="fw-bold mb-3">Estado de Captura</h3>
-                    <div className="mb-2 d-flex justify-content-between">
-                      <span>Seña actual:</span>
-                      <span className="fw-bold">{currentSign}</span>
-                    </div>
-                    <div className="mb-2 d-flex justify-content-between">
-                      <span>Muestras capturadas:</span>
-                      <span className="fw-bold">{captureCount}</span>
-                    </div>
-                    <div className="d-flex justify-content-between">
-                      <span>Detección de mano:</span>
-                      <span className={isHandDetected ? 'text-success' : 'text-danger'}>
-                        {isHandDetected ? 'Detectada 👋' : 'No detectada ❌'}
-                      </span>
+        <div className="container-fluid my-4 px-4">
+          <div className="row justify-content-center">
+            <div className="col-lg-10 col-xl-9">
+              <div className="card shadow-lg border-0 rounded-3">
+                <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center gap-3">
+                    <button
+                      onClick={() => setCurrentStep("setup")}
+                      className="btn btn-outline-secondary btn-sm"
+                    >
+                      ⬅ Volver
+                    </button>
+                    <div>
+                      <h2 className="card-title fw-bold mb-0">📸 Captura de Datos</h2>
+                      <small className="text-muted">
+                        Capturando: <strong>{currentSign}</strong> | Muestras: <strong>{captureCount}</strong>
+                      </small>
                     </div>
                   </div>
+                  <span className="badge bg-primary px-3 py-2">
+                    {selectedCategory.toUpperCase()}
+                  </span>
                 </div>
 
-                {/* Catálogo */}
-                <div className="card">
-                  <div className="card-header">
-                    <h3 className="card-title">📚 Catálogo de Signos</h3>
-                    <p className="card-subtitle text-muted">
-                      Selecciona rápidamente el signo que quieres capturar
-                    </p>
-                  </div>
-                  <div className="card-body">
-                    <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-2">
-                      {categories[selectedCategory].map((sign) => (
+                <div className="card-body">
+                  <div className="row g-4">
+                    <div className="col-md-8">
+                      <div className="card shadow-sm border-0 rounded-3 h-100">
+                        <div className="card-body text-center">
+                          {isCameraOn ? (
+                            <MediaPipeCamera
+                              onLandmarks={handleLandmarks}
+                              onHandDetected={handleHandDetected}
+                            />
+                          ) : (
+                            <p className="text-muted">📷 Cámara apagada</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="col-md-4 d-flex flex-column gap-3">
+                      <div className="card border-0 shadow-sm rounded-3">
+                        <div className="card-body">
+                          <h5 className="fw-bold mb-3">⚡ Estado de Captura</h5>
+                          <div className="mb-2 d-flex justify-content-between">
+                            <span>Seña actual:</span>
+                            <span className="fw-bold text-primary">{currentSign}</span>
+                          </div>
+                          <div className="mb-2 d-flex justify-content-between">
+                            <span>Muestras capturadas:</span>
+                            <span className="fw-bold text-success">{captureCount}</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span>Detección de mano:</span>
+                            <span className={isHandDetected ? "text-success fw-bold" : "text-danger fw-bold"}>
+                              {isHandDetected ? "✅ Detectada" : "❌ No detectada"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="card border-0 shadow-sm rounded-3">
+                        <div className="card-header bg-light">
+                          <h5 className="card-title mb-0">📚 Catálogo de Signos</h5>
+                        </div>
+                        <div className="card-body">
+                          <div className="d-flex flex-wrap gap-2">
+                            {categories[selectedCategory].map((sign) => (
+                              <button
+                                key={sign}
+                                onClick={() => setCurrentSign(sign)}
+                                className={`btn btn-sm px-3 fw-bold ${
+                                  currentSign === sign ? "btn-primary" : "btn-outline-secondary"
+                                }`}
+                              >
+                                {sign}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="d-flex flex-wrap justify-content-center gap-3 mt-2">
                         <button
-                          key={sign}
-                          onClick={() => setCurrentSign(sign)}
-                          className={`p-2 border rounded text-lg font-bold transition-all
-                            ${
-                              currentSign === sign
-                                ? "bg-primary text-white shadow"
-                                : "bg-white hover:bg-gray-100"
-                            }`}
+                          onClick={() => setIsCameraOn(!isCameraOn)}
+                          className={`btn ${isCameraOn ? "btn-danger" : "btn-success"}`}
                         >
-                          {sign}
+                          {isCameraOn ? "🔴 Apagar Cámara" : "🟢 Encender Cámara"}
                         </button>
-                      ))}
+
+                        <button
+                          onClick={captureSample}
+                          disabled={!isHandDetected || !isCameraOn}
+                          className="btn btn-primary"
+                        >
+                          📸 Capturar
+                        </button>
+
+                        <button
+                          onClick={() => setCurrentStep("review")}
+                          className="btn btn-secondary"
+                        >
+                          📑 Revisar
+                        </button>
+
+                        <button
+                          onClick={resetCollection}
+                          className="btn btn-outline-danger"
+                        >
+                          🔄 Reiniciar
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Controles */}
-                <div className="d-flex flex-wrap justify-center gap-3 mt-2">
-                  {/* Botón toggle cámara */}
-                  <button
-                    onClick={() => setIsCameraOn(!isCameraOn)}
-                    className={`btn ${isCameraOn ? "btn-danger" : "btn-success"}`}
-                  >
-                    {isCameraOn ? "Apagar Cámara" : "Encender Cámara"}
-                  </button>
-
-                  <button
-                    onClick={captureSample}
-                    disabled={!isHandDetected || !isCameraOn}
-                    className="btn btn-primary"
-                  >
-                    📷 Capturar
-                  </button>
-
-                  <button
-                    onClick={() => setCurrentStep('review')}
-                    className="btn btn-secondary"
-                  >
-                    📑 Revisar
-                  </button>
-
-                  <button
-                    onClick={resetCollection}
-                    className="btn btn-outline-danger"
-                  >
-                    🔄 Reiniciar
-                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
       )}
+
+{/* Extra Capture Info */}
+{currentStep === 'capture' && (
+  <div className="container my-4">
+    {/* Barra de progreso */}
+    <div className="card shadow-sm border-0 rounded-3 mb-4">
+      <div className="card-body">
+        <h6 className="fw-bold mb-2">📊 Progreso de Captura</h6>
+        <div className="progress">
+          <div
+            className="progress-bar progress-bar-striped bg-success"
+            role="progressbar"
+            style={{
+              width: `${(captureCount / categories[selectedCategory].length) * 100}%`
+            }}
+            aria-valuenow={captureCount}
+            aria-valuemin="0"
+            aria-valuemax={categories[selectedCategory].length}
+          >
+            {captureCount}/{categories[selectedCategory].length} muestras
+          </div>
+        </div>
+      </div>
+    </div>
+
+        {/* Consejos */}
+        <div className="card shadow-sm border-0 rounded-3 text-center">
+          <div className="card-body">
+            <h6 className="fw-bold mb-2">📌 Consejos de Captura</h6>
+            <p className="text-muted small mb-1">✔ Asegúrate de buena iluminación</p>
+            <p className="text-muted small mb-1">✔ Mantén la mano dentro del recuadro</p>
+            <p className="text-muted small">✔ Haz el gesto de forma clara y estable</p>
+          </div>
+        </div>
+      </div>
+    )}
 
       {/* Review Step */}
       {currentStep === 'review' && (
@@ -329,19 +339,15 @@ const DataCollection = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-4 gap-4">
                 {categories[selectedCategory].map((sign) => {
-                  // Obtener muestras desde las estadísticas del backend
                   const signSamples = stats?.signs?.[sign]?.samples || 0
                   return (
                     <div key={sign} className="border rounded p-3 text-center">
                       <div className="text-lg font-bold">{sign}</div>
-                      <div className="text-sm text-secondary">
-                        {signSamples} muestras
-                      </div>
+                      <div className="text-sm text-secondary">{signSamples} muestras</div>
                     </div>
                   )
                 })}
               </div>
-              
               <div className="text-center">
                 <p className="mb-4">
                   Total de muestras capturadas: <strong>{stats?.total_samples || 0}</strong>
@@ -366,9 +372,7 @@ const DataCollection = () => {
               Ahora puedes proceder al entrenamiento del modelo.
             </p>
             <div className="space-x-4">
-              <button className="btn btn-primary">
-                Ir al Entrenamiento
-              </button>
+              <button className="btn btn-primary">Ir al Entrenamiento</button>
               <button onClick={resetCollection} className="btn btn-secondary">
                 Capturar Más Datos
               </button>
@@ -376,6 +380,8 @@ const DataCollection = () => {
           </div>
         </div>
       )}
+            {/* 🔹 Footer */}
+      <Footer />
     </div>
   )
 }

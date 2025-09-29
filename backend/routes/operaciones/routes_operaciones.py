@@ -2,11 +2,11 @@
 Rutas específicas para el manejo de operaciones matemáticas
 """
 
-from fastapi import APIRouter, HTTPException, status
-from typing import List, Dict, Any
+from fastapi import APIRouter, HTTPException
+from typing import List, Dict
 from datetime import datetime
 
-from models import Category, Sample, SampleCreate, Model, PredictionResult
+from models import Category, Sample, SampleCreate, PredictionResult
 from math_evaluator import MathEvaluator
 from config import settings
 from store import store
@@ -23,10 +23,11 @@ async def get_operaciones():
     """Obtener lista de operaciones disponibles"""
     return OPERACIONES
 
+
 @router.post("/operaciones/category/{user_id}", response_model=Category)
 async def create_operaciones_category(user_id: int):
     """Crear categoría de operaciones para el usuario"""
-    category_id = len(data_store["categories"]) + 1
+    category_id = len(store.categories) + 1   # ✅ corregido (antes usaba data_store que no existe)
     
     category = Category(
         id=category_id,
@@ -43,6 +44,7 @@ async def create_operaciones_category(user_id: int):
     
     return category
 
+
 @router.get("/operaciones/samples/{user_id}", response_model=List[Sample])
 async def get_operaciones_samples(user_id: int):
     """Obtener muestras de operaciones del usuario"""
@@ -52,9 +54,13 @@ async def get_operaciones_samples(user_id: int):
             Sample(**sample) for sample in data.get("samples", [])
             if sample.get("user_id") == user_id
         ]
+        return user_samples
     except Exception as e:
-        user_samples = []
-    return user_samples
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error obteniendo muestras: {str(e)}"
+        )
+
 
 @router.post("/operaciones/samples/{user_id}", response_model=Sample)
 async def create_operaciones_sample(user_id: int, sample: SampleCreate):
@@ -93,53 +99,107 @@ async def create_operaciones_sample(user_id: int, sample: SampleCreate):
             detail=f"Error guardando muestra: {str(e)}"
         )
 
+
 @router.get("/operaciones/training-status/{user_id}")
 async def get_operaciones_training_status(user_id: int):
     """Obtener estado de entrenamiento de operaciones"""
-    user_samples = [
-        sample for sample in store.samples.values()
-        if sample.get("user_id") == user_id and sample.get("category_name") in OPERACIONES
-    ]
-    
-    # Contar muestras por operación
-    operacion_counts = {}
-    for operacion in OPERACIONES:
-        operacion_counts[operacion] = len([s for s in user_samples if s.get("category_name") == operacion])
-    
-    total_samples = len(user_samples)
-    can_train = total_samples >= settings.MIN_SAMPLES_FOR_TRAINING
-    
-    return {
-        "total_samples": total_samples,
-        "operacion_counts": operacion_counts,
-        "can_train": can_train,
-        "ready_for_optimal": total_samples >= settings.OPTIMAL_SAMPLES_FOR_TRAINING,
-        "operaciones_available": OPERACIONES
-    }
+    try:
+        data = datos_manager.get_samples("operaciones")
+        user_samples = [
+            sample for sample in data.get("samples", [])
+            if sample.get("user_id") == user_id
+        ]
+        
+        # Contar muestras por operación
+        operacion_counts = {}
+        for operacion in OPERACIONES:
+            operacion_counts[operacion] = len([s for s in user_samples if s.get("category_name") == operacion])
+        
+        total_samples = len(user_samples)
+        can_train = total_samples >= settings.MIN_SAMPLES_FOR_TRAINING
+        
+        return {
+            "total_samples": total_samples,
+            "operacion_counts": operacion_counts,
+            "can_train": can_train,
+            "ready_for_optimal": total_samples >= settings.OPTIMAL_SAMPLES_FOR_TRAINING,
+            "operaciones_available": OPERACIONES
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error obteniendo estado: {str(e)}"
+        )
+
+
+@router.get("/operaciones/stats/{user_id}")
+async def get_operaciones_stats(user_id: int):
+    """Obtener estadísticas de operaciones"""
+    try:
+        stats = datos_manager.get_category_stats("operaciones")
+        return stats
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error obteniendo estadísticas: {str(e)}"
+        )
+
+
+@router.post("/operaciones/train/{user_id}")
+async def train_operaciones_model(user_id: int):
+    """Entrenar modelo de ML para operaciones"""
+    try:
+        from ml_model import models
+        
+        # Usar el modelo de operaciones
+        model = models["operaciones"]
+        result = model.train()
+        
+        return {
+            "success": result["success"],
+            "message": result["message"],
+            "accuracy": result["accuracy"],
+            "samples": result["samples"],
+            "classes": result.get("classes", []),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error entrenando modelo: {str(e)}"
+        )
+
 
 @router.post("/operaciones/predict/{user_id}", response_model=PredictionResult)
 async def predict_operacion(user_id: int, landmarks: List[Dict[str, float]]):
     """Predecir operación basada en landmarks"""
-    # Aquí iría la lógica de predicción con el modelo entrenado
-    # Por ahora, simulamos una predicción
-    
-    import random
-    
-    predicted_operacion = random.choice(OPERACIONES)
-    confidence = random.uniform(0.7, 0.95)
-    
-    return PredictionResult(
-        prediction=predicted_operacion,
-        confidence=confidence,
-        model_id=3,
-        timestamp=datetime.now().isoformat()
-    )
+    try:
+        from ml_model import models
+        
+        # Usar modelo entrenado para operaciones
+        model = models["operaciones"]
+        result = model.predict(landmarks)
+        
+        return PredictionResult(
+            prediction=result["prediction"],
+            confidence=result["confidence"],
+            model_id=3,
+            timestamp=datetime.now().isoformat()
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error en predicción: {str(e)}"
+        )
+
 
 @router.post("/operaciones/evaluate")
 async def evaluate_expression(expression: str):
     """Evaluar expresión matemática"""
     result = math_evaluator.evaluate_expression(expression)
     return result
+
 
 @router.get("/operaciones/problems/{difficulty}")
 async def get_math_problems(difficulty: str = "easy", count: int = 5):
@@ -151,6 +211,7 @@ async def get_math_problems(difficulty: str = "easy", count: int = 5):
         "problems": problems
     }
 
+
 @router.delete("/operaciones/samples/{user_id}/{operacion}")
 async def delete_operacion_samples(user_id: int, operacion: str):
     """Eliminar todas las muestras de una operación específica"""
@@ -160,19 +221,20 @@ async def delete_operacion_samples(user_id: int, operacion: str):
             detail=f"Operación '{operacion}' no válida"
         )
     
-    # Filtrar muestras para eliminar
-    samples_to_delete = [
-        sample_id for sample_id, sample in store.samples.items()
-        if sample.get("user_id") == user_id and sample.get("category_name") == operacion
-    ]
-    
-    # Eliminar muestras
-    for sample_id in samples_to_delete:
-        del store.samples[sample_id]
-    
-    store.save_data()
-    
-    return {
-        "message": f"Eliminadas {len(samples_to_delete)} muestras de la operación '{operacion}'",
-        "deleted_count": len(samples_to_delete)
-    }
+    try:
+        success = datos_manager.delete_sign_samples("operaciones", operacion)
+        if success:
+            return {
+                "message": f"Eliminadas todas las muestras de la operación '{operacion}'",
+                "deleted": True
+            }
+        else:
+            return {
+                "message": f"No se encontraron muestras para la operación '{operacion}'",
+                "deleted": False
+            }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error eliminando muestras: {str(e)}"
+        )

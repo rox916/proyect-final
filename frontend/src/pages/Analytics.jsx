@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from "react";
+import HeroNavbar from "../components/HeroNavbar";
+import Footer from "../components/Footer";
 
 const Analytics = () => {
   const [analytics, setAnalytics] = useState({
@@ -9,13 +11,13 @@ const Analytics = () => {
     categoryDistribution: {},
     accuracyEvolution: [],
     recommendations: []
-  })
+  });
 
-  const [selectedTimeframe, setSelectedTimeframe] = useState('week')
-  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [selectedTimeframe, setSelectedTimeframe] = useState("week");
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   useEffect(() => {
-    // Simular carga de datos de analíticas
+    // Simular carga de datos
     setAnalytics({
       totalCategories: 3,
       totalSamples: 150,
@@ -27,51 +29,47 @@ const Analytics = () => {
         operaciones: 60
       },
       accuracyEvolution: [
-        { date: '2024-01-01', accuracy: 0.75 },
-        { date: '2024-01-02', accuracy: 0.82 },
-        { date: '2024-01-03', accuracy: 0.85 },
-        { date: '2024-01-04', accuracy: 0.88 },
-        { date: '2024-01-05', accuracy: 0.89 }
+        { date: "2024-01-01", accuracy: 0.75 },
+        { date: "2024-01-02", accuracy: 0.82 },
+        { date: "2024-01-03", accuracy: 0.85 },
+        { date: "2024-01-04", accuracy: 0.88 },
+        { date: "2024-01-05", accuracy: 0.89 }
       ],
       recommendations: [
-        'Añade más muestras a la categoría "Números" para mejorar la precisión',
-        'Considera reentrenar el modelo de "Operaciones" con datos más diversos',
-        'La categoría "Vocales" tiene excelente rendimiento'
+        "Añade más muestras a la categoría 'Números' para mejorar la precisión",
+        "Considera reentrenar el modelo de 'Operaciones' con datos más diversos",
+        "La categoría 'Vocales' tiene excelente rendimiento"
       ]
-    })
-  }, [])
+    });
+  }, []);
 
   const getAccuracyColor = (accuracy) => {
-    if (accuracy >= 0.9) return 'text-success'
-    if (accuracy >= 0.8) return 'text-warning'
-    return 'text-error'
-  }
-
-  const getAccuracyText = (accuracy) => {
-    if (accuracy >= 0.9) return 'Excelente'
-    if (accuracy >= 0.8) return 'Bueno'
-    if (accuracy >= 0.7) return 'Regular'
-    return 'Necesita mejora'
-  }
+    if (accuracy >= 0.9) return "text-success";
+    if (accuracy >= 0.8) return "text-warning";
+    return "text-danger";
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="card">
-        <div className="card-header">
-          <h1 className="card-title">Analíticas y Métricas</h1>
-          <p className="card-subtitle">Visualiza el rendimiento de tus modelos y datos</p>
-        </div>
-      </div>
+    <div>
+      {/* 🔹 Navbar */}
+      <HeroNavbar />
 
-      {/* Filters */}
-      <div className="card">
-        <div className="card-body">
-          <div className="flex gap-4">
+      <main className="container my-5">
+        {/* Header */}
+        <div className="text-center mb-5">
+          <h1 className="fw-bold">📊 Analíticas y Métricas</h1>
+          <p className="text-muted">
+            Visualiza el rendimiento de tus modelos y la calidad de los datos
+          </p>
+        </div>
+
+        {/* Filtros */}
+        <div className="card shadow-sm border-0 mb-4">
+          <div className="card-body d-flex flex-wrap gap-4">
             <div>
-              <label className="form-label">Período:</label>
-              <select 
-                value={selectedTimeframe} 
+              <label className="form-label fw-bold">Período:</label>
+              <select
+                value={selectedTimeframe}
                 onChange={(e) => setSelectedTimeframe(e.target.value)}
                 className="form-select"
               >
@@ -81,13 +79,13 @@ const Analytics = () => {
               </select>
             </div>
             <div>
-              <label className="form-label">Categoría:</label>
-              <select 
-                value={selectedCategory} 
+              <label className="form-label fw-bold">Categoría:</label>
+              <select
+                value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="form-select"
               >
-                <option value="all">Todas las categorías</option>
+                <option value="all">Todas</option>
                 <option value="vocales">Vocales</option>
                 <option value="numeros">Números</option>
                 <option value="operaciones">Operaciones</option>
@@ -95,211 +93,198 @@ const Analytics = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="card text-center">
-          <div className="card-body">
-            <div className="text-3xl font-bold text-primary mb-2">
-              {analytics.totalCategories}
+        {/* Stats Resumen */}
+        <div className="row g-4 mb-4">
+          <div className="col-md-3">
+            <div className="card text-center shadow-sm border-0">
+              <div className="card-body">
+                <h3 className="fw-bold text-primary">{analytics.totalCategories}</h3>
+                <p className="text-muted">Categorías</p>
+              </div>
             </div>
-            <div className="text-sm text-secondary">Categorías</div>
+          </div>
+          <div className="col-md-3">
+            <div className="card text-center shadow-sm border-0">
+              <div className="card-body">
+                <h3 className="fw-bold text-success">{analytics.totalSamples}</h3>
+                <p className="text-muted">Muestras</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3">
+            <div className="card text-center shadow-sm border-0">
+              <div className="card-body">
+                <h3 className="fw-bold text-warning">{analytics.totalModels}</h3>
+                <p className="text-muted">Modelos</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3">
+            <div className="card text-center shadow-sm border-0">
+              <div className="card-body">
+                <h3
+                  className={`fw-bold ${getAccuracyColor(
+                    analytics.averageAccuracy
+                  )}`}
+                >
+                  {(analytics.averageAccuracy * 100).toFixed(1)}%
+                </h3>
+                <p className="text-muted">Precisión Promedio</p>
+              </div>
+            </div>
           </div>
         </div>
-        
-        <div className="card text-center">
-          <div className="card-body">
-            <div className="text-3xl font-bold text-success mb-2">
-              {analytics.totalSamples}
-            </div>
-            <div className="text-sm text-secondary">Muestras</div>
-          </div>
-        </div>
-        
-        <div className="card text-center">
-          <div className="card-body">
-            <div className="text-3xl font-bold text-warning mb-2">
-              {analytics.totalModels}
-            </div>
-            <div className="text-sm text-secondary">Modelos</div>
-          </div>
-        </div>
-        
-        <div className="card text-center">
-          <div className="card-body">
-            <div className={`text-3xl font-bold mb-2 ${getAccuracyColor(analytics.averageAccuracy)}`}>
-              {(analytics.averageAccuracy * 100).toFixed(1)}%
-            </div>
-            <div className="text-sm text-secondary">Precisión Promedio</div>
-          </div>
-        </div>
-      </div>
 
-      {/* Category Distribution */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">Distribución de Muestras por Categoría</h2>
-          <p className="card-subtitle">Visualiza cuántas muestras tienes en cada categoría</p>
-        </div>
-        <div className="card-body">
-          <div className="space-y-4">
-            {Object.entries(analytics.categoryDistribution).map(([category, count]) => (
-              <div key={category} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-primary"></div>
-                  <span className="font-semibold capitalize">{category}</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full"
-                      style={{ width: `${(count / Math.max(...Object.values(analytics.categoryDistribution))) * 100}%` }}
+        {/* Distribución de Categorías */}
+        <div className="card shadow-sm border-0 mb-4">
+          <div className="card-header bg-light">
+            <h5 className="mb-0">📂 Distribución de Muestras</h5>
+          </div>
+          <div className="card-body">
+            {Object.entries(analytics.categoryDistribution).map(
+              ([category, count]) => (
+                <div key={category} className="mb-3">
+                  <div className="d-flex justify-content-between">
+                    <span className="fw-semibold text-capitalize">{category}</span>
+                    <span>{count}</span>
+                  </div>
+                  <div className="progress" style={{ height: "8px" }}>
+                    <div
+                      className="progress-bar bg-primary"
+                      role="progressbar"
+                      style={{
+                        width: `${
+                          (count /
+                            Math.max(
+                              ...Object.values(analytics.categoryDistribution)
+                            )) *
+                          100
+                        }%`
+                      }}
                     ></div>
                   </div>
-                  <span className="text-sm font-semibold w-12 text-right">{count}</span>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Accuracy Evolution */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">Evolución de la Precisión</h2>
-          <p className="card-subtitle">Cómo ha mejorado la precisión de tus modelos a lo largo del tiempo</p>
-        </div>
-        <div className="card-body">
-          <div className="h-64 flex items-end justify-between gap-2">
+        {/* Evolución Precisión */}
+        <div className="card shadow-sm border-0 mb-4">
+          <div className="card-header bg-light">
+            <h5 className="mb-0">📈 Evolución de Precisión</h5>
+          </div>
+          <div className="card-body d-flex align-items-end gap-3">
             {analytics.accuracyEvolution.map((point, index) => (
-              <div key={index} className="flex flex-col items-center gap-2">
-                <div 
-                  className="bg-primary rounded-t"
-                  style={{ 
+              <div key={index} className="text-center">
+                <div
+                  className="bg-primary rounded-top mx-auto"
+                  style={{
                     height: `${point.accuracy * 200}px`,
-                    width: '40px'
+                    width: "40px"
                   }}
                 ></div>
-                <div className="text-xs text-secondary">
+                <small className="d-block mt-1 text-muted">
                   {(point.accuracy * 100).toFixed(0)}%
-                </div>
-                <div className="text-xs text-secondary">
+                </small>
+                <small className="text-muted">
                   {new Date(point.date).toLocaleDateString()}
-                </div>
+                </small>
               </div>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Model Performance */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Rendimiento por Modelo</h2>
-          </div>
-          <div className="card-body">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold">Modelo Vocales</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-success">95%</span>
-                  <div className="w-16 bg-gray-200 rounded-full h-2">
-                    <div className="bg-success h-2 rounded-full" style={{ width: '95%' }}></div>
-                  </div>
-                </div>
+        {/* Rendimiento + Recomendaciones */}
+        <div className="row g-4 mb-4">
+          <div className="col-md-6">
+            <div className="card shadow-sm border-0">
+              <div className="card-header bg-light">
+                <h5 className="mb-0">⚙️ Rendimiento por Modelo</h5>
               </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="font-semibold">Modelo Números</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-warning">87%</span>
-                  <div className="w-16 bg-gray-200 rounded-full h-2">
-                    <div className="bg-warning h-2 rounded-full" style={{ width: '87%' }}></div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="font-semibold">Modelo Operaciones</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-success">92%</span>
-                  <div className="w-16 bg-gray-200 rounded-full h-2">
-                    <div className="bg-success h-2 rounded-full" style={{ width: '92%' }}></div>
-                  </div>
-                </div>
+              <div className="card-body">
+                <ul className="list-unstyled mb-0">
+                  <li className="mb-3">
+                    <strong>Modelo Vocales</strong> – <span className="text-success">95%</span>
+                    <div className="progress">
+                      <div className="progress-bar bg-success" style={{ width: "95%" }}></div>
+                    </div>
+                  </li>
+                  <li className="mb-3">
+                    <strong>Modelo Números</strong> – <span className="text-warning">87%</span>
+                    <div className="progress">
+                      <div className="progress-bar bg-warning" style={{ width: "87%" }}></div>
+                    </div>
+                  </li>
+                  <li>
+                    <strong>Modelo Operaciones</strong> – <span className="text-success">92%</span>
+                    <div className="progress">
+                      <div className="progress-bar bg-success" style={{ width: "92%" }}></div>
+                    </div>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
+
+          <div className="col-md-6">
+            <div className="card shadow-sm border-0">
+              <div className="card-header bg-light">
+                <h5 className="mb-0">🤖 Recomendaciones de IA</h5>
+              </div>
+              <div className="card-body">
+                <ul className="list-unstyled mb-0">
+                  {analytics.recommendations.map((rec, i) => (
+                    <li key={i} className="mb-2">
+                      <span className="badge bg-primary me-2">{i + 1}</span>
+                      {rec}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Recomendaciones de IA</h2>
+        {/* Calidad de Datos */}
+        <div className="card shadow-sm border-0 mb-4">
+          <div className="card-header bg-light">
+            <h5 className="mb-0">📌 Calidad de los Datos</h5>
           </div>
-          <div className="card-body">
-            <div className="space-y-3">
-              {analytics.recommendations.map((recommendation, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center flex-shrink-0">
-                    {index + 1}
-                  </div>
-                  <p className="text-sm text-secondary">{recommendation}</p>
-                </div>
-              ))}
+          <div className="card-body row text-center">
+            <div className="col-md-4">
+              <h4 className="text-success fw-bold">98%</h4>
+              <p className="text-muted">Muestras Válidas</p>
+            </div>
+            <div className="col-md-4">
+              <h4 className="text-warning fw-bold">12%</h4>
+              <p className="text-muted">Duplicadas</p>
+            </div>
+            <div className="col-md-4">
+              <h4 className="text-primary fw-bold">85%</h4>
+              <p className="text-muted">Calidad Promedio</p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Data Quality */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">Calidad de los Datos</h2>
-          <p className="card-subtitle">Métricas de calidad de tus muestras capturadas</p>
-        </div>
-        <div className="card-body">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-success mb-2">98%</div>
-              <div className="text-sm text-secondary">Muestras Válidas</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-warning mb-2">12%</div>
-              <div className="text-sm text-secondary">Muestras Duplicadas</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary mb-2">85%</div>
-              <div className="text-sm text-secondary">Calidad Promedio</div>
-            </div>
+        {/* Exportación */}
+        <div className="card shadow-sm border-0 mb-5">
+          <div className="card-header bg-light">
+            <h5 className="mb-0">📤 Exportar Datos</h5>
+          </div>
+          <div className="card-body d-flex flex-wrap gap-3">
+            <button className="btn btn-primary">📊 Exportar Analíticas</button>
+            <button className="btn btn-outline-primary">📈 Exportar Gráficos</button>
+            <button className="btn btn-outline-secondary">📋 Exportar Reporte</button>
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* Export Options */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">Exportar Datos</h2>
-          <p className="card-subtitle">Descarga tus analíticas y datos</p>
-        </div>
-        <div className="card-body">
-          <div className="flex gap-4">
-            <button className="btn btn-primary">
-              📊 Exportar Analíticas
-            </button>
-            <button className="btn btn-secondary">
-              📈 Exportar Gráficos
-            </button>
-            <button className="btn btn-secondary">
-              📋 Exportar Reporte
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Footer */}
+      <Footer />
     </div>
-  )
-}
+  );
+};
 
-export default Analytics
+export default Analytics;

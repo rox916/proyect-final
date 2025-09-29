@@ -4,21 +4,25 @@ import { useNavigate } from "react-router-dom";
 import HeroNavbar from "../components/HeroNavbar";
 import Footer from "../components/Footer";
 
-
-// Imagen fija (puedes cambiarla si cada modelo tiene la suya)
+// Imagen fija
 import abecedarioImg from "../assets/abecedario.png";
 
 // Íconos
-import {
-  FaHands,
-  FaChartLine,
-  FaCheckCircle,
-} from "react-icons/fa";
+import { FaHands, FaChartLine, FaCheckCircle } from "react-icons/fa";
+
+// 🔹 Importar AOS
+import AOS from "aos";
+import "aos/dist/aos.css";
 
 const Prediction = () => {
   const navigate = useNavigate();
   const [availableModels, setAvailableModels] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(true);
+
+  // 🔹 Inicializar AOS
+  useEffect(() => {
+    AOS.init({ duration: 1000, once: true });
+  }, []);
 
   // 🔹 Cargar modelos desde el backend
   useEffect(() => {
@@ -85,6 +89,7 @@ const Prediction = () => {
           minHeight: "40vh",
           background: "linear-gradient(90deg, #131C29, #1C2535)",
         }}
+        data-aos="fade-down"  // 👈 Animación al entrar
       >
         <h1 className="display-5 fw-bold">Predicción en Tiempo Real</h1>
         <p className="lead mt-2">
@@ -93,21 +98,21 @@ const Prediction = () => {
       </section>
 
       {/* 🔹 Selección de Modelo */}
-      <section className="container my-5">
+      <section className="container my-5" data-aos="fade-up">
         <h2 className="fw-bold text-center mb-4">Selecciona un Modelo</h2>
 
         {modelsLoading ? (
-          <div className="text-center py-5">
+          <div className="text-center py-5" data-aos="zoom-in">
             <div className="spinner-border text-primary" role="status"></div>
             <p className="text-muted mt-3">Cargando modelos...</p>
           </div>
         ) : (
           <div className="row g-4">
-            {availableModels.map((model) => {
+            {availableModels.map((model, i) => {
               const bgImage = abecedarioImg;
 
               return (
-                <div key={model.id} className="col-md-4">
+                <div key={model.id} className="col-md-4" data-aos="zoom-in" data-aos-delay={i * 150}>
                   <div
                     className="card model-card shadow-sm position-relative overflow-hidden"
                     style={{
@@ -116,11 +121,11 @@ const Prediction = () => {
                       backgroundPosition: "center",
                       height: "250px",
                       borderRadius: "12px",
-                      cursor: "pointer", // 👈 cursor de mano
+                      cursor: "pointer",
                     }}
-                    onClick={() => navigate(`/prediction/${model.category}`)} // 👈 al hacer click en todo el card
+                    onClick={() => navigate(`/prediction/${model.category}`)}
                   >
-                    {/* Overlay con datos (aparece solo en hover) */}
+                    {/* Overlay con datos */}
                     <div className="overlay d-flex flex-column justify-content-center align-items-center text-center p-3">
                       <h5 className="fw-bold text-white">{model.name}</h5>
                       <p className="text-white-50 small mb-1">
@@ -152,10 +157,10 @@ const Prediction = () => {
       </section>
 
       {/* 🔹 Cómo Funciona */}
-      <section className="container my-5">
+      <section className="container my-5" data-aos="fade-up">
         <h2 className="fw-bold text-center mb-4">¿Cómo Funciona?</h2>
         <div className="row g-4 text-center">
-          <div className="col-md-4">
+          <div className="col-md-4" data-aos="fade-up" data-aos-delay="100">
             <div className="card shadow-sm border-0 h-100">
               <div className="card-body">
                 <FaHands size={40} className="text-primary mb-3" />
@@ -166,7 +171,7 @@ const Prediction = () => {
               </div>
             </div>
           </div>
-          <div className="col-md-4">
+          <div className="col-md-4" data-aos="fade-up" data-aos-delay="200">
             <div className="card shadow-sm border-0 h-100">
               <div className="card-body">
                 <FaChartLine size={40} className="text-success mb-3" />
@@ -178,7 +183,7 @@ const Prediction = () => {
               </div>
             </div>
           </div>
-          <div className="col-md-4">
+          <div className="col-md-4" data-aos="fade-up" data-aos-delay="300">
             <div className="card shadow-sm border-0 h-100">
               <div className="card-body">
                 <FaCheckCircle size={40} className="text-warning mb-3" />
@@ -194,10 +199,10 @@ const Prediction = () => {
       </section>
 
       {/* 🔹 Detalles del Sistema */}
-      <section className="my-5 system-details">
+      <section className="my-5 system-details" data-aos="fade-up">
         <h2 className="fw-bold text-center mb-4">Detalles del Sistema</h2>
         <div className="row g-3 justify-content-center">
-          <div className="col-12 col-md-5">
+          <div className="col-12 col-md-5" data-aos="zoom-in" data-aos-delay="100">
             <div className="card shadow-sm border-0 h-100 text-center p-4">
               <div className="mb-3">
                 <i className="fas fa-chart-line fa-2x text-success"></i>
@@ -211,7 +216,7 @@ const Prediction = () => {
             </div>
           </div>
 
-          <div className="col-12 col-md-5">
+          <div className="col-12 col-md-5" data-aos="zoom-in" data-aos-delay="200">
             <div className="card shadow-sm border-0 h-100 text-center p-4">
               <div className="mb-3">
                 <i className="fas fa-volume-up fa-2x text-info"></i>
@@ -227,8 +232,9 @@ const Prediction = () => {
           </div>
         </div>
       </section>
+
       {/* 🔹 Footer */}
-    <Footer />
+      <Footer />
     </div>
   );
 };

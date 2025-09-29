@@ -33,7 +33,7 @@ app.add_middleware(
 # Incluir routers
 app.include_router(general_router, prefix="/api/v1", tags=["General"])
 app.include_router(vocales_router, prefix="/api/v1", tags=["Vocales"])
-app.include_router(abecedario_router, prefix="/api/v1", tags=["Abecedario"])
+app.include_router(abecedario_router, prefix="/api/v1", tags=["Abecedario"])  # ✅ ya incluye /train
 app.include_router(numeros_router, prefix="/api/v1", tags=["Números"])
 app.include_router(operaciones_router, prefix="/api/v1", tags=["Operaciones"])
 
@@ -48,7 +48,7 @@ async def root():
             "health": "/health",
             "ai_agent": "/api/v1/ai-agent",
             "vocales": "/api/v1/vocales",
-            "abecedario": "/api/v1/abecedario",
+            "abecedario": "/api/v1/abecedario",   # 👈 aquí estarán también /train, /stats, etc.
             "numeros": "/api/v1/numeros",
             "operaciones": "/api/v1/operaciones"
         }

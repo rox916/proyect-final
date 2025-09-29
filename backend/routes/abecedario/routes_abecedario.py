@@ -138,23 +138,63 @@ async def get_abecedario_stats(user_id: int):
             detail=f"Error obteniendo estadísticas: {str(e)}"
         )
 
+@router.post("/abecedario/train/{user_id}")
+async def train_abecedario_model(user_id: int):
+    """Entrenar modelo de ML para el abecedario"""
+    try:
+        from ml_model import models
+        
+        model = models["abecedario"]
+        result = model.train()
+        
+        return {
+            "success": result["success"],
+            "message": result["message"],
+            "accuracy": result["accuracy"],
+            "samples": result["samples"],
+            "classes": result.get("classes", []),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error entrenando modelo: {str(e)}"
+        )
+
 @router.post("/abecedario/predict/{user_id}", response_model=PredictionResult)
 async def predict_letter(user_id: int, landmarks: List[Dict[str, float]]):
-    """Predecir letra basada en landmarks"""
-    # Aquí iría la lógica de predicción con el modelo entrenado
-    # Por ahora, simulamos una predicción
+    """Predecir letra basada en landmarks usando el modelo entrenado"""
+    try:
+        from ml_model import models
+        
+        # Verifica si el modelo está entrenado
+        if "abecedario" not in models:
+            return PredictionResult(
+                prediction="Modelo no entrenado",
+                confidence=0.0,
+                model_id=2,
+                timestamp=datetime.now().isoformat()
+            )
+        
+        model = models["abecedario"]
+        result = model.predict(landmarks)   # 👈 Usa el modelo entrenado
+        
+        return PredictionResult(
+            prediction=result["prediction"],
+            confidence=result["confidence"],
+            model_id=2,
+            timestamp=datetime.now().isoformat()
+        )
     
-    import random
-    
-    predicted_letter = random.choice(ABECEDARIO)
-    confidence = random.uniform(0.7, 0.95)
-    
-    return PredictionResult(
-        prediction=predicted_letter,
-        confidence=confidence,
-        model_id=2,
-        timestamp=datetime.now().isoformat()
-    )
+    except Exception as e:
+        return PredictionResult(
+            prediction="Error ML",
+            confidence=0.0,
+            model_id=2,
+            timestamp=datetime.now().isoformat()
+        )
+
 
 @router.delete("/abecedario/samples/{user_id}/{letter}")
 async def delete_letter_samples(user_id: int, letter: str):

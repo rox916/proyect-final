@@ -187,55 +187,58 @@ const AIAgent = ({ type, userId, categoryName, accuracy, onMessage, currentActio
   }
 
   return (
-    <div className={`alert ${getMessageColor()} fade-in`}>
-      <div className="flex items-start gap-3">
-        <div className="text-2xl">{getMessageIcon()}</div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="font-semibold">Asistente IA</span>
-            {isTyping && <div className="spinner"></div>}
-            {isSpeaking && <div className="text-green-600">🔊</div>}
-          </div>
-          <p className="text-sm">{message}</p>
-          
-          {/* Historial de mensajes recientes */}
-          {messageHistory.length > 1 && (
-            <div className="mt-2 text-xs text-gray-500">
-              <details>
-                <summary className="cursor-pointer">Ver historial</summary>
-                <div className="mt-1 space-y-1">
-                  {messageHistory.slice(0, -1).reverse().map((item, index) => (
-                    <div key={index} className="text-xs opacity-75">
-                      {item.message}
-                    </div>
-                  ))}
-                </div>
-              </details>
-            </div>
-          )}
-          
-          {message && (
-            <div className="mt-2 flex gap-2">
-              <button
-                onClick={speakMessage}
-                disabled={isSpeaking}
-                className={`btn btn-sm ${isSpeaking ? 'btn-disabled' : 'btn-secondary'}`}
-                title="Reproducir audio"
-              >
-                {isSpeaking ? '🔊 Hablando...' : '🔊 Reproducir'}
-              </button>
-              <button
-                onClick={() => setMessage('')}
-                className="btn btn-sm btn-secondary"
-                title="Cerrar mensaje"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-        </div>
+    <div className="d-flex justify-content-center my-4">
+    <div className="card shadow-sm border-0" style={{ maxWidth: "600px", width: "100%" }}>
+      {/* Header */}
+      <div className="card-header bg-light border-0 d-flex align-items-center gap-2">
+        <span className="fs-5">🤖</span>
+        <h6 className="fw-bold mb-0">Asistente IA</h6>
+        {isTyping && <div className="spinner ms-2"></div>}
+        {isSpeaking && <span className="text-success ms-2">🔊</span>}
       </div>
+
+      {/* Cuerpo */}
+      <div className="card-body">
+        <p className="text-muted small mb-2">{message}</p>
+
+        {messageHistory.length > 1 && (
+          <div className="mt-2 text-xs text-gray-500">
+            <details>
+              <summary className="cursor-pointer">📜 Ver historial</summary>
+              <div className="mt-2 space-y-1">
+                {messageHistory.slice(0, -1).reverse().map((item, index) => (
+                  <div key={index} className="text-xs opacity-75">
+                    {item.message}
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
+        )}
+      </div>
+
+      {/* Footer con botones */}
+      {message && (
+        <div className="card-footer bg-light border-0 d-flex gap-2 justify-content-end">
+          <button
+            onClick={speakMessage}
+            disabled={isSpeaking}
+            className={`btn btn-sm ${isSpeaking ? "btn-disabled" : "btn-outline-primary"}`}
+            title="Reproducir audio"
+          >
+            {isSpeaking ? "🔊 Hablando..." : "🔊 Reproducir"}
+          </button>
+          <button
+            onClick={() => setMessage("")}
+            className="btn btn-sm btn-outline-secondary"
+            title="Cerrar mensaje"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
+  </div>
   )
 }
 
