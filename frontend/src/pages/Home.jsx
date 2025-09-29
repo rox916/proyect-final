@@ -96,7 +96,7 @@ const Home = () => {
             {loading ? 'Cargando...' : welcomeMessage}
           </p>
           <Link
-            to="/data-collection"
+            to="/prediction"
             className="btn btn-primary btn-lg rounded-pill shadow mt-3"
             data-aos="fade-up"
           >

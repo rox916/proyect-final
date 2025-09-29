@@ -60,20 +60,21 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(19, 28, 41, 0.7); /* Fondo oscuro */
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
   color: white;
-  opacity: 0; /* 👉 Oculto al inicio */
+  opacity: 0; /* oculto al inicio */
   transition: opacity 0.3s ease-in-out;
+  background: transparent; /* 👈 transparente mientras no haya hover */
 }
 
 /* 🔹 Aparecen al pasar el cursor */
 .model-card:hover .overlay {
   opacity: 1;
+  background: rgba(19, 28, 41, 0.7); /* 👈 ahora sí, oscuro solo en hover */
 }
 
 /* 🔹 Cards con mismo alto y centradas */
