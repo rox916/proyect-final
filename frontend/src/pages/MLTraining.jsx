@@ -14,6 +14,7 @@ const MLTraining = () => {
   const [trainingResult, setTrainingResult] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("numeros");
   const [stats, setStats] = useState(null);
+  const [aiMessage, setAiMessage] = useState('');
 
   // 🔹 Estado para manejar modal de confirmación
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -98,13 +99,18 @@ const MLTraining = () => {
       );
 
       if (response.ok) {
-        // ✅ Ya no usamos alert()
+        const result = await response.json();
+        console.log("✅ Eliminación exitosa:", result);
         fetchStats(); // refrescar estadísticas
+        setAiMessage(`Muestras de '${signToDelete}' eliminadas correctamente`);
       } else {
-        console.error("❌ Error al eliminar las muestras");
+        const errorData = await response.json();
+        console.error("❌ Error al eliminar las muestras:", errorData);
+        setAiMessage(`Error al eliminar: ${errorData.detail || 'Error desconocido'}`);
       }
     } catch (error) {
       console.error("Error eliminando datos:", error);
+      setAiMessage(`Error de conexión: ${error.message}`);
     } finally {
       setShowDeleteModal(false);
       setSignToDelete(null);
@@ -125,6 +131,19 @@ const MLTraining = () => {
             <FaBrain className="me-2" />
             Entrena modelos de Machine Learning con tus datos de señas
           </p>
+          
+          {/* 🔹 Mensajes de AI */}
+          {aiMessage && (
+            <div className="alert alert-info alert-dismissible fade show mt-3" role="alert">
+              <strong>🤖 Asistente IA:</strong> {aiMessage}
+              <button 
+                type="button" 
+                className="btn-close" 
+                onClick={() => setAiMessage('')}
+                aria-label="Close"
+              ></button>
+            </div>
+          )}
         </section>
 
         {/* 🔹 Selección de Categoría */}
@@ -384,7 +403,7 @@ const MLTraining = () => {
                 <button
                   className="btn text-white px-4"
                   style={{ backgroundColor: "#0096c7", borderColor: "#0096c7" }}
-                  onClick={() => handleConfirmDelete()}
+                  onClick={() => confirmDelete()}
                 >
                   🗑 Eliminar
                 </button>
