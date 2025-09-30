@@ -8,7 +8,7 @@ from datetime import datetime
 
 from models import Category, Sample, SampleCreate, Model, PredictionResult
 from config import settings
-from store import store
+# store import removed
 from datos_manager import datos_manager
 
 router = APIRouter()

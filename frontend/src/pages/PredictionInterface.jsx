@@ -3,14 +3,12 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import MediaPipeCamera from "../components/MediaPipeCamera";
 import HeroNavbar from "../components/HeroNavbar";
-import { FaHistory } from "react-icons/fa";
 
 const PredictionInterface = () => {
   const { model } = useParams(); // modelo que viene desde la URL
 
   const [isPredicting, setIsPredicting] = useState(false);
   const [currentPrediction, setCurrentPrediction] = useState(null);
-  const [predictionHistory, setPredictionHistory] = useState([]);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [aiFeedback, setAiFeedback] = useState("");
   const [isHandDetected, setIsHandDetected] = useState(false);
@@ -18,23 +16,40 @@ const PredictionInterface = () => {
   const [lastPredictionTime, setLastPredictionTime] = useState(0);
   const [handStableTime, setHandStableTime] = useState(0);
   const [bothHandsDetected, setBothHandsDetected] = useState(false);
+  const [dualHandMode, setDualHandMode] = useState(false); // Nueva opción para el usuario
+
+  // Función para cambiar el modo de detección
+  const handleModeChange = (isDualHand) => {
+    setDualHandMode(isDualHand);
+    // Resetear estados cuando se cambie el modo
+    setHandStableTime(0);
+    setLastPredictionTime(0);
+    setCurrentPrediction(null);
+    setAiFeedback(isDualHand ? "Modo de dos manos activado" : "Modo de una mano activado");
+  };
 
   // 🔹 Predicciones
   useEffect(() => {
     const now = Date.now();
     if (!isPredicting || !model) return;
 
-    // Para números y operaciones, requerir ambas manos
-    const requiresBothHands = model === 'numeros' || model === 'operaciones';
-    const canPredict = requiresBothHands ? bothHandsDetected : isHandDetected;
+    // Usar la opción del usuario para determinar si requiere ambas manos
+    const canPredict = dualHandMode ? bothHandsDetected : isHandDetected;
+    
+    // Si no se detecta la mano, limpiar la predicción
+    if (!canPredict) {
+      setCurrentPrediction(null);
+      setHandStableTime(0);
+      return;
+    }
     
     if (canPredict && landmarks && landmarks.length === 21) {
       if (handStableTime === 0) {
         setHandStableTime(now);
         return;
       }
-      if (now - handStableTime < 500) return;
-      if (now - lastPredictionTime < 1000) return;
+      if (now - handStableTime < 200) return;
+      if (now - lastPredictionTime < 300) return;
 
       setLastPredictionTime(now);
       predictWithBackend(landmarks, model);
@@ -61,7 +76,6 @@ const PredictionInterface = () => {
           model: category,
         };
         setCurrentPrediction(predictionResult);
-        setPredictionHistory((prev) => [predictionResult, ...prev.slice(0, 9)]);
       }
     } catch {
       setCurrentPrediction({
@@ -103,7 +117,7 @@ const PredictionInterface = () => {
                   <MediaPipeCamera
                     onLandmarks={setLandmarks}
                     onHandDetected={setIsHandDetected}
-                    dualHandMode={model === 'numeros' || model === 'operaciones'}
+                    dualHandMode={dualHandMode}
                     onDualHandDetected={setBothHandsDetected}
                   />
                 ) : (
@@ -118,6 +132,43 @@ const PredictionInterface = () => {
           <div className="col-md-5">
             <div className="card shadow-sm">
               <div className="card-body text-center">
+                <h5 className="fw-bold mb-3">Configuración de Detección</h5>
+                
+                {/* Selector de modo de detección */}
+                <div className="mb-3">
+                  <label className="form-label fw-bold">Modo de Detección:</label>
+                  <div className="d-grid gap-2">
+                    <button
+                      className={`btn ${!dualHandMode ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => handleModeChange(false)}
+                    >
+                      👋 Una Mano
+                    </button>
+                    
+                    <button
+                      className={`btn ${dualHandMode ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => handleModeChange(true)}
+                    >
+                      🤲 Dos Manos
+                    </button>
+                  </div>
+                  <small className="text-muted">
+                    {dualHandMode 
+                      ? "Detecta ambas manos para mayor precisión" 
+                      : "Detecta una sola mano para mayor flexibilidad"
+                    }
+                  </small>
+                  
+                  {/* Consejos para el usuario */}
+                  <div className="mt-2">
+                    <small className="text-info">
+                      💡 <strong>Consejos:</strong><br/>
+                      • <strong>Una mano:</strong> Más fácil de usar, ideal para principiantes<br/>
+                      • <strong>Dos manos:</strong> Mayor precisión, ideal para gestos complejos
+                    </small>
+                  </div>
+                </div>
+
                 <h5 className="fw-bold mb-3">Estado del Sistema</h5>
                 <p>
                   Estado:{" "}
@@ -127,21 +178,22 @@ const PredictionInterface = () => {
                     <span className="text-danger fw-bold">Inactivo ❌</span>
                   )}
                 </p>
-                <p>
-                  Mano:{" "}
-                  {isHandDetected ? (
-                    <span className="text-success">Detectada 👋</span>
-                  ) : (
-                    <span className="text-muted">No detectada</span>
-                  )}
-                </p>
-                {(model === 'numeros' || model === 'operaciones') && (
+                {dualHandMode ? (
                   <p>
                     Ambas manos:{" "}
                     {bothHandsDetected ? (
                       <span className="text-success">Detectadas 🤲</span>
                     ) : (
                       <span className="text-warning">Esperando...</span>
+                    )}
+                  </p>
+                ) : (
+                  <p>
+                    Mano:{" "}
+                    {isHandDetected ? (
+                      <span className="text-success">Detectada 👋</span>
+                    ) : (
+                      <span className="text-muted">No detectada</span>
                     )}
                   </p>
                 )}
@@ -183,31 +235,6 @@ const PredictionInterface = () => {
           </div>
         </div>
 
-        {/* 🔹 Historial */}
-        {predictionHistory.length > 0 && (
-          <section className="mt-5">
-            <h2 className="fw-bold text-center mb-4">
-              <FaHistory className="me-2" /> Historial de Predicciones
-            </h2>
-            <div className="card shadow-sm">
-              <div className="card-body">
-                {predictionHistory.map((p, i) => (
-                  <div
-                    key={i}
-                    className="d-flex justify-content-between border-bottom py-2"
-                  >
-                    <span>
-                      <strong>{p.prediction}</strong> ({p.model})
-                    </span>
-                    <span className="text-muted">
-                      {(p.confidence * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
       </section>
     </div>
   );

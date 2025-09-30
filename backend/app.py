@@ -13,6 +13,7 @@ from routes.vocales.routes_vocales import router as vocales_router
 from routes.abecedario.routes_abecedario import router as abecedario_router
 from routes.numeros.routes_numeros import router as numeros_router
 from routes.operaciones.routes_operaciones import router as operaciones_router
+from routes.calculadora.routes_calculadora import router as calculadora_router
 
 # Crear aplicación FastAPI
 app = FastAPI(
@@ -36,6 +37,7 @@ app.include_router(vocales_router, prefix="/api/v1", tags=["Vocales"])
 app.include_router(abecedario_router, prefix="/api/v1", tags=["Abecedario"])  # ✅ ya incluye /train
 app.include_router(numeros_router, prefix="/api/v1", tags=["Números"])
 app.include_router(operaciones_router, prefix="/api/v1", tags=["Operaciones"])
+app.include_router(calculadora_router, prefix="/api/v1", tags=["Calculadora"])
 
 @app.get("/")
 async def root():
@@ -50,7 +52,8 @@ async def root():
             "vocales": "/api/v1/vocales",
             "abecedario": "/api/v1/abecedario",   # 👈 aquí estarán también /train, /stats, etc.
             "numeros": "/api/v1/numeros",
-            "operaciones": "/api/v1/operaciones"
+            "operaciones": "/api/v1/operaciones",
+            "calculadora": "/api/v1/calculadora"
         }
     }
 

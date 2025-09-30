@@ -77,25 +77,6 @@ export const useAIAgent = (userId = 1) => {
     setCurrentMessage('')
   }
 
-  const getAnalytics = async () => {
-    setIsLoading(true)
-    try {
-      const response = await aiAgentService.getAnalytics(userId)
-      return response
-    } catch (error) {
-      console.error('Error obteniendo analíticas:', error)
-      return {
-        total_categories: 0,
-        total_samples: 0,
-        total_models: 0,
-        category_distribution: {},
-        accuracy_evolution: [],
-        recommendations: []
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const getRecommendations = (analytics) => {
     return aiAgentService.getRecommendations(analytics)
@@ -113,7 +94,6 @@ export const useAIAgent = (userId = 1) => {
     speakMessage,
     stopSpeaking,
     clearMessages,
-    getAnalytics,
     getRecommendations
   }
 }

@@ -37,11 +37,11 @@ const HeroNavbar = () => {
   const navigation = [
     { name: "Inicio", href: "/" },
     { name: "Predicción", href: "/prediction" },
+    { name: "🧮 Calculadora", href: "/calculadora" },
     ...(isAuthenticated
       ? [
           { name: "Recolección de Datos", href: "/data-collection" },
           { name: "Entrenamiento ML", href: "/ml-training" },
-          { name: "Analíticas", href: "/analytics" },
         ]
       : []),
   ];
