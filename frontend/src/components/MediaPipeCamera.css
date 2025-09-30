@@ -49,6 +49,11 @@
   color: white;
 }
 
+.mediapipe-status-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
 .mediapipe-status-error {
   background: linear-gradient(135deg, #ef4444, #dc2626);
   color: white;

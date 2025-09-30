@@ -30,6 +30,15 @@ class SignRecognitionModel:
         self.accuracy_ = 0.0
         self.model_path = f"models/{category}_model.pkl"
         
+        # Mapeo de nombres internos a símbolos originales
+        self.symbol_mapping = {
+            "mult": "*",
+            "div": "/", 
+            "equal": "=",
+            "plus": "+",
+            "minus": "-"
+        }
+        
     def load_training_data(self) -> Tuple[np.ndarray, np.ndarray]:
         """Cargar datos de entrenamiento desde archivos JSON"""
         X = []  # Features (landmarks)
@@ -196,8 +205,11 @@ class SignRecognitionModel:
             probabilities = self.model.predict_proba([features])[0]
             confidence = np.max(probabilities)
             
+            # Convertir nombre interno a símbolo original si es necesario
+            original_symbol = self.symbol_mapping.get(prediction, prediction)
+            
             return {
-                "prediction": prediction,
+                "prediction": original_symbol,
                 "confidence": float(confidence),
                 "probabilities": {
                     cls: float(prob) for cls, prob in zip(self.classes_, probabilities)

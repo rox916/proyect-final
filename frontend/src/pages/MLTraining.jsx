@@ -83,6 +83,7 @@ const MLTraining = () => {
 
   // 🔹 Abrir modal con la seña seleccionada
   const handleDeleteClick = (sign) => {
+    console.log('🔍 handleDeleteClick llamado con sign:', sign);
     setSignToDelete(sign);
     setShowDeleteModal(true);
   };
@@ -90,11 +91,30 @@ const MLTraining = () => {
   // 🔹 Confirmar eliminación desde modal
   // 🔹 Confirmar eliminación desde modal
   const confirmDelete = async () => {
-    if (!signToDelete) return;
+    if (!signToDelete) {
+      console.log('❌ signToDelete está vacío');
+      return;
+    }
+
+    // Validar que signToDelete no esté vacío o sea undefined
+    if (signToDelete === '' || signToDelete === undefined || signToDelete === null) {
+      console.log('❌ signToDelete es inválido:', signToDelete);
+      setAiMessage('Error: No se especificó qué eliminar');
+      return;
+    }
+
+    console.log('🗑️ Intentando eliminar:', {
+      selectedCategory,
+      signToDelete,
+      url: `http://localhost:8000/api/v1/${selectedCategory}/samples/1/${signToDelete}`
+    });
 
     try {
+      const encodedSign = encodeURIComponent(signToDelete);
+      console.log("🔗 URL completa:", `http://localhost:8000/api/v1/${selectedCategory}/samples/1/${encodedSign}`);
+      
       const response = await fetch(
-        `http://localhost:8000/api/v1/${selectedCategory}/samples/1/${signToDelete}`,
+        `http://localhost:8000/api/v1/${selectedCategory}/samples/1/${encodedSign}`,
         { method: "DELETE" }
       );
 
@@ -216,7 +236,9 @@ const MLTraining = () => {
 
               <h5 className="fw-bold">📊 Distribución por Seña</h5>
               <div className="row g-2 mt-2">
-                {Object.entries(stats.signs || {}).map(([sign, data]) => (
+                {Object.entries(stats.signs || {}).map(([sign, data]) => {
+                  console.log('🔍 Renderizando sign:', sign, 'data:', data);
+                  return (
                   <div key={sign} className="col-md-2">
                     <div className="border rounded p-2 text-center d-flex flex-column align-items-center">
                       <div className="fw-bold">{sign}</div>
@@ -231,7 +253,8 @@ const MLTraining = () => {
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

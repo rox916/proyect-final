@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import MediaPipeCamera from '../components/MediaPipeCamera'
 import AIAgent from '../components/AIAgent'
 import { useStats } from '../hooks/useStats'
@@ -17,9 +17,36 @@ const DataCollection = () => {
   const [aiMessage, setAiMessage] = useState('')
   const [isHandDetected, setIsHandDetected] = useState(false)
   const [landmarks, setLandmarks] = useState(null)
+  const [bothHandsDetected, setBothHandsDetected] = useState(false)
+  const [autoCaptureEnabled, setAutoCaptureEnabled] = useState(false)
+  const [lastAutoCapture, setLastAutoCapture] = useState(null)
+  const [isAutoCapturing, setIsAutoCapturing] = useState(false)
   
   // Cargar estadísticas del backend
   const { stats, loading: statsLoading, refetch: refetchStats, chartData } = useStats(selectedCategory)
+
+  // Efecto para captura automática - lógica simple y directa
+  useEffect(() => {
+    
+    // Solo para números y operaciones
+    if (selectedCategory !== 'numeros' && selectedCategory !== 'operaciones') return
+    
+    // Verificar todas las condiciones
+    if (bothHandsDetected && autoCaptureEnabled && landmarks && landmarks.length === 21) {
+      const now = Date.now()
+      
+      // Verificar cooldown - reducir tiempo para permitir más capturas
+      if (!lastAutoCapture || (now - lastAutoCapture) > 2000) {
+        setLastAutoCapture(now)
+        setIsAutoCapturing(true)
+        
+        // Capturar inmediatamente
+        captureSample(true)
+        setTimeout(() => setIsAutoCapturing(false), 1500)
+      }
+    }
+  }, [bothHandsDetected, autoCaptureEnabled, landmarks, selectedCategory, currentSign])
+
 
   const categories = {
     vocales: ['A', 'E', 'I', 'O', 'U'],
@@ -33,11 +60,20 @@ const DataCollection = () => {
     setLandmarks(newLandmarks)
   }
 
+  // Reset cooldown cuando cambies de signo
+  useEffect(() => {
+    setLastAutoCapture(null)
+  }, [currentSign])
+
   const handleHandDetected = (detected) => {
     setIsHandDetected(detected)
   }
 
-  const captureSample = async () => {
+  const handleDualHandDetected = (detected) => {
+    setBothHandsDetected(detected)
+  }
+
+  const captureSample = async (isAutoCapture = false) => {
     if (landmarks && landmarks.length === 21) {
       const newSample = {
         landmarks: landmarks,
@@ -59,7 +95,13 @@ const DataCollection = () => {
           const savedSample = await response.json()
           setSamples([...samples, savedSample])
           setCaptureCount(captureCount + 1)
-          setAiMessage(`Muestra ${captureCount + 1} capturada para la letra ${currentSign}. ¡Excelente!`)
+          
+          if (isAutoCapture) {
+            setAiMessage(`🤖 Captura automática: Muestra ${captureCount + 1} para ${currentSign}. ¡Excelente!`)
+            // NO avanzar automáticamente - el usuario controla el cambio de signo
+          } else {
+            setAiMessage(`Muestra ${captureCount + 1} capturada para la letra ${currentSign}. ¡Excelente!`)
+          }
           
           // Refrescar estadísticas
           refetchStats()
@@ -71,7 +113,9 @@ const DataCollection = () => {
         setAiMessage('Error de conexión. Verifica que el backend esté funcionando.')
       }
     } else {
-      setAiMessage('Por favor, asegúrate de que tu mano esté visible y realiza la seña correctamente.')
+      if (!isAutoCapture) {
+        setAiMessage('Por favor, asegúrate de que tu mano esté visible y realiza la seña correctamente.')
+      }
     }
   }
 
@@ -205,6 +249,8 @@ const DataCollection = () => {
                             <MediaPipeCamera
                               onLandmarks={handleLandmarks}
                               onHandDetected={handleHandDetected}
+                              dualHandMode={selectedCategory === 'numeros' || selectedCategory === 'operaciones'}
+                              onDualHandDetected={handleDualHandDetected}
                             />
                           ) : (
                             <p className="text-muted">📷 Cámara apagada</p>
@@ -219,7 +265,12 @@ const DataCollection = () => {
                           <h5 className="fw-bold mb-3">⚡ Estado de Captura</h5>
                           <div className="mb-2 d-flex justify-content-between">
                             <span>Seña actual:</span>
-                            <span className="fw-bold text-primary">{currentSign}</span>
+                            <span className="fw-bold text-primary">
+                              {currentSign}
+                              {autoCaptureEnabled && (selectedCategory === 'numeros' || selectedCategory === 'operaciones') && (
+                                <span className="badge bg-warning text-dark ms-2">AUTO</span>
+                              )}
+                            </span>
                           </div>
                           <div className="mb-2 d-flex justify-content-between">
                             <span>Muestras capturadas:</span>
@@ -231,6 +282,30 @@ const DataCollection = () => {
                               {isHandDetected ? "✅ Detectada" : "❌ No detectada"}
                             </span>
                           </div>
+                          {(selectedCategory === 'numeros' || selectedCategory === 'operaciones') && (
+                            <>
+                              <div className="d-flex justify-content-between">
+                                <span>Ambas manos:</span>
+                                <span className={bothHandsDetected ? "text-success fw-bold" : "text-warning fw-bold"}>
+                                  {bothHandsDetected ? "🤲 Detectadas" : "👋 Esperando..."}
+                                </span>
+                              </div>
+                              <div className="d-flex justify-content-between">
+                                <span>Captura automática:</span>
+                                <span className={autoCaptureEnabled ? "text-success fw-bold" : "text-secondary fw-bold"}>
+                                  {isAutoCapturing ? "📸 Capturando..." : autoCaptureEnabled ? "🔄 Activa" : "⏸️ Inactiva"}
+                                </span>
+                              </div>
+                              {autoCaptureEnabled && lastAutoCapture && (
+                                <div className="d-flex justify-content-between">
+                                  <span>Última captura:</span>
+                                  <span className="text-muted small">
+                                    {Math.round((Date.now() - lastAutoCapture) / 1000)}s atrás
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -270,6 +345,22 @@ const DataCollection = () => {
                         >
                           📸 Capturar
                         </button>
+
+                        {(selectedCategory === 'numeros' || selectedCategory === 'operaciones') && (
+                          <>
+                            <button
+                              onClick={() => setAutoCaptureEnabled(!autoCaptureEnabled)}
+                              className={`btn ${autoCaptureEnabled ? "btn-warning" : "btn-outline-warning"}`}
+                            >
+                              {autoCaptureEnabled ? "⏸️ Desactivar Auto" : "🔄 Activar Auto"}
+                            </button>
+                            {autoCaptureEnabled && (
+                              <>
+                              </>
+                            )}
+                          </>
+                        )}
+                        
 
                         <button
                           onClick={() => setCurrentStep("review")}
@@ -337,7 +428,13 @@ const DataCollection = () => {
             <h6 className="fw-bold mb-2">📌 Consejos de Captura</h6>
             <p className="text-muted small mb-1">✔ Asegúrate de buena iluminación</p>
             <p className="text-muted small mb-1">✔ Mantén la mano dentro del recuadro</p>
-            <p className="text-muted small">✔ Haz el gesto de forma clara y estable</p>
+            <p className="text-muted small mb-1">✔ Haz el gesto de forma clara y estable</p>
+            {(selectedCategory === 'numeros' || selectedCategory === 'operaciones') && (
+              <>
+                <p className="text-info small mb-1">🤲 Para números y operaciones: Usa ambas manos</p>
+                <p className="text-info small">🔄 Activa la captura automática para mayor comodidad</p>
+              </>
+            )}
           </div>
         </div>
       </div>

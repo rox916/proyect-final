@@ -17,13 +17,18 @@ const PredictionInterface = () => {
   const [landmarks, setLandmarks] = useState(null);
   const [lastPredictionTime, setLastPredictionTime] = useState(0);
   const [handStableTime, setHandStableTime] = useState(0);
+  const [bothHandsDetected, setBothHandsDetected] = useState(false);
 
   // 🔹 Predicciones
   useEffect(() => {
     const now = Date.now();
     if (!isPredicting || !model) return;
 
-    if (isHandDetected && landmarks && landmarks.length === 21) {
+    // Para números y operaciones, requerir ambas manos
+    const requiresBothHands = model === 'numeros' || model === 'operaciones';
+    const canPredict = requiresBothHands ? bothHandsDetected : isHandDetected;
+    
+    if (canPredict && landmarks && landmarks.length === 21) {
       if (handStableTime === 0) {
         setHandStableTime(now);
         return;
@@ -34,7 +39,7 @@ const PredictionInterface = () => {
       setLastPredictionTime(now);
       predictWithBackend(landmarks, model);
     }
-  }, [landmarks, isHandDetected, isPredicting, model]);
+  }, [landmarks, isHandDetected, bothHandsDetected, isPredicting, model]);
 
   const predictWithBackend = async (landmarks, category) => {
     try {
@@ -98,6 +103,8 @@ const PredictionInterface = () => {
                   <MediaPipeCamera
                     onLandmarks={setLandmarks}
                     onHandDetected={setIsHandDetected}
+                    dualHandMode={model === 'numeros' || model === 'operaciones'}
+                    onDualHandDetected={setBothHandsDetected}
                   />
                 ) : (
                   <p className="text-muted text-center">
@@ -128,6 +135,16 @@ const PredictionInterface = () => {
                     <span className="text-muted">No detectada</span>
                   )}
                 </p>
+                {(model === 'numeros' || model === 'operaciones') && (
+                  <p>
+                    Ambas manos:{" "}
+                    {bothHandsDetected ? (
+                      <span className="text-success">Detectadas 🤲</span>
+                    ) : (
+                      <span className="text-warning">Esperando...</span>
+                    )}
+                  </p>
+                )}
                 <div className="d-grid gap-2 mt-3">
                   {!isPredicting ? (
                     <button

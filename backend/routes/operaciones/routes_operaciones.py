@@ -211,29 +211,54 @@ async def get_math_problems(difficulty: str = "easy", count: int = 5):
         "problems": problems
     }
 
+@router.get("/operaciones/test-delete")
+async def test_delete_endpoint():
+    """Endpoint de prueba para verificar que las rutas funcionan"""
+    return {
+        "message": "Endpoint de eliminación está funcionando",
+        "operaciones_disponibles": OPERACIONES,
+        "status": "ok"
+    }
+
+@router.get("/operaciones/test-simple")
+async def test_simple():
+    """Endpoint de prueba simple"""
+    return {"message": "Operaciones router funcionando"}
+
+@router.delete("/operaciones/test-delete-simple")
+async def test_delete_simple():
+    """Endpoint DELETE de prueba simple"""
+    return {"message": "DELETE endpoint funcionando", "status": "ok"}
+
 
 @router.delete("/operaciones/samples/{user_id}/{operacion}")
 async def delete_operacion_samples(user_id: int, operacion: str):
     """Eliminar todas las muestras de una operación específica"""
+    print(f"🗑️ Eliminando muestras para operación: {operacion}, usuario: {user_id}")
+    
     if operacion not in OPERACIONES:
+        print(f"❌ Operación '{operacion}' no válida. Operaciones disponibles: {OPERACIONES}")
         raise HTTPException(
             status_code=400,
-            detail=f"Operación '{operacion}' no válida"
+            detail=f"Operación '{operacion}' no válida. Operaciones disponibles: {OPERACIONES}"
         )
     
     try:
         success = datos_manager.delete_sign_samples("operaciones", operacion)
         if success:
+            print(f"✅ Eliminación exitosa para operación: {operacion}")
             return {
                 "message": f"Eliminadas todas las muestras de la operación '{operacion}'",
                 "deleted": True
             }
         else:
+            print(f"⚠️ No se encontraron muestras para operación: {operacion}")
             return {
                 "message": f"No se encontraron muestras para la operación '{operacion}'",
                 "deleted": False
             }
     except Exception as e:
+        print(f"❌ Error eliminando muestras: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Error eliminando muestras: {str(e)}"
