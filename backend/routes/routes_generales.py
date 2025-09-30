@@ -10,7 +10,7 @@ from datetime import datetime
 
 from models import User, Category, Sample, Model, AIAgentMessage, AnalyticsData
 from config import settings
-from store import store
+# store import removed
 
 router = APIRouter()
 
@@ -35,7 +35,7 @@ async def health_check():
 @router.get("/ai-agent/welcome/{user_id}", response_model=AIAgentMessage)
 async def get_welcome_message(user_id: int):
     """Mensaje de bienvenida del agente IA"""
-    user = store.users.get(user_id)
+    user = {"id": user_id, "name": "Usuario Demo", "email": "demo@example.com"}
     user_name = user.get("name", "Usuario") if user else "Usuario"
     
     return AIAgentMessage(
@@ -82,9 +82,9 @@ async def get_training_feedback(user_id: int, accuracy: float):
 @router.get("/analytics/{user_id}", response_model=AnalyticsData)
 async def get_analytics(user_id: int):
     """Obtener analíticas del usuario"""
-    user_categories = [c for c in store.categories.values() if c.get("user_id") == user_id]
-    user_samples = [s for s in store.samples.values() if s.get("user_id") == user_id]
-    user_models = [m for m in store.models.values() if m.get("user_id") == user_id]
+    user_categories = []
+    user_samples = []
+    user_models = []
     
     category_distribution = {}
     for category in user_categories:

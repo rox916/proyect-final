@@ -110,13 +110,17 @@ const MLTraining = () => {
     });
 
     try {
-      const encodedSign = encodeURIComponent(signToDelete);
-      console.log("🔗 URL completa:", `http://localhost:8000/api/v1/${selectedCategory}/samples/1/${encodedSign}`);
+      // Mapear símbolos problemáticos a nombres seguros para la URL
+      const safeSign = signToDelete === '/' ? 'div' : 
+                      signToDelete === '*' ? 'mult' :
+                      signToDelete === '=' ? 'equal' :
+                      signToDelete === '+' ? 'plus' :
+                      signToDelete === '-' ? 'minus' : signToDelete;
       
-      const response = await fetch(
-        `http://localhost:8000/api/v1/${selectedCategory}/samples/1/${encodedSign}`,
-        { method: "DELETE" }
-      );
+      const url = `http://localhost:8000/api/v1/${selectedCategory}/samples/1/${safeSign}`;
+      console.log("🔗 URL completa:", url);
+      
+      const response = await fetch(url, { method: "DELETE" });
 
       if (response.ok) {
         const result = await response.json();

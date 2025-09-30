@@ -7,13 +7,10 @@ from typing import List, Dict
 from datetime import datetime
 
 from models import Category, Sample, SampleCreate, PredictionResult
-from math_evaluator import MathEvaluator
 from config import settings
-from store import store
 from datos_manager import datos_manager
 
 router = APIRouter()
-math_evaluator = MathEvaluator()
 
 # Operaciones disponibles
 OPERACIONES = ["+", "-", "*", "/", "="]
@@ -27,10 +24,8 @@ async def get_operaciones():
 @router.post("/operaciones/category/{user_id}", response_model=Category)
 async def create_operaciones_category(user_id: int):
     """Crear categoría de operaciones para el usuario"""
-    category_id = len(store.categories) + 1   # ✅ corregido (antes usaba data_store que no existe)
-    
     category = Category(
-        id=category_id,
+        id=1,
         name="Operaciones Matemáticas",
         description="Categoría para entrenar operaciones básicas (+, -, *, /, =)",
         type="operaciones",
@@ -38,9 +33,6 @@ async def create_operaciones_category(user_id: int):
         sample_count=0,
         created_at=datetime.now().isoformat()
     )
-    
-    store.categories[category_id] = category.dict()
-    store.save_data()
     
     return category
 
@@ -230,11 +222,30 @@ async def test_delete_simple():
     """Endpoint DELETE de prueba simple"""
     return {"message": "DELETE endpoint funcionando", "status": "ok"}
 
+@router.delete("/operaciones/test-div")
+async def test_delete_div():
+    """Endpoint DELETE de prueba para el símbolo /"""
+    return {"message": "DELETE endpoint para / funcionando", "status": "ok"}
+
 
 @router.delete("/operaciones/samples/{user_id}/{operacion}")
 async def delete_operacion_samples(user_id: int, operacion: str):
     """Eliminar todas las muestras de una operación específica"""
     print(f"🗑️ Eliminando muestras para operación: {operacion}, usuario: {user_id}")
+    
+    # Mapeo de nombres seguros a símbolos originales
+    safe_to_original = {
+        'div': '/',
+        'mult': '*',
+        'equal': '=',
+        'plus': '+',
+        'minus': '-'
+    }
+    
+    # Si es un nombre seguro, convertirlo al símbolo original
+    if operacion in safe_to_original:
+        operacion = safe_to_original[operacion]
+        print(f"🔄 Convertido nombre seguro a símbolo original: {operacion}")
     
     if operacion not in OPERACIONES:
         print(f"❌ Operación '{operacion}' no válida. Operaciones disponibles: {OPERACIONES}")
@@ -244,7 +255,10 @@ async def delete_operacion_samples(user_id: int, operacion: str):
         )
     
     try:
+        print(f"🔍 Llamando a delete_sign_samples con: operaciones, {operacion}")
         success = datos_manager.delete_sign_samples("operaciones", operacion)
+        print(f"🔍 Resultado de delete_sign_samples: {success}")
+        
         if success:
             print(f"✅ Eliminación exitosa para operación: {operacion}")
             return {
@@ -259,6 +273,8 @@ async def delete_operacion_samples(user_id: int, operacion: str):
             }
     except Exception as e:
         print(f"❌ Error eliminando muestras: {e}")
+        import traceback
+        print(f"❌ Traceback completo: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
             detail=f"Error eliminando muestras: {str(e)}"

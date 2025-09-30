@@ -21,6 +21,16 @@ const DataCollection = () => {
   const [autoCaptureEnabled, setAutoCaptureEnabled] = useState(false)
   const [lastAutoCapture, setLastAutoCapture] = useState(null)
   const [isAutoCapturing, setIsAutoCapturing] = useState(false)
+  const [dualHandMode, setDualHandMode] = useState(false) // Nueva opción para el usuario
+
+  // Función para cambiar el modo de detección
+  const handleModeChange = (isDualHand) => {
+    setDualHandMode(isDualHand);
+    // Resetear estados cuando se cambie el modo
+    setLastAutoCapture(null);
+    setIsAutoCapturing(false);
+    setAiMessage(isDualHand ? "Modo de dos manos activado" : "Modo de una mano activado");
+  };
   
   // Cargar estadísticas del backend
   const { stats, loading: statsLoading, refetch: refetchStats, chartData } = useStats(selectedCategory)
@@ -28,24 +38,43 @@ const DataCollection = () => {
   // Efecto para captura automática - lógica simple y directa
   useEffect(() => {
     
-    // Solo para números y operaciones
-    if (selectedCategory !== 'numeros' && selectedCategory !== 'operaciones') return
-    
-    // Verificar todas las condiciones
-    if (bothHandsDetected && autoCaptureEnabled && landmarks && landmarks.length === 21) {
-      const now = Date.now()
+    // Para números y operaciones: usar la opción del usuario
+    // Para otras categorías: usar detección de una mano
+    if (selectedCategory === 'numeros' || selectedCategory === 'operaciones') {
+      // Usar la opción del usuario para determinar si requiere ambas manos
+      const canCapture = dualHandMode ? bothHandsDetected : isHandDetected
       
-      // Verificar cooldown - reducir tiempo para permitir más capturas
-      if (!lastAutoCapture || (now - lastAutoCapture) > 2000) {
-        setLastAutoCapture(now)
-        setIsAutoCapturing(true)
+      // Verificar todas las condiciones
+      if (canCapture && autoCaptureEnabled && landmarks && landmarks.length === 21) {
+        const now = Date.now()
         
-        // Capturar inmediatamente
-        captureSample(true)
-        setTimeout(() => setIsAutoCapturing(false), 1500)
+        // Verificar cooldown - reducir tiempo para permitir más capturas
+        if (!lastAutoCapture || (now - lastAutoCapture) > 2000) {
+          setLastAutoCapture(now)
+          setIsAutoCapturing(true)
+          
+          // Capturar inmediatamente
+          captureSample(true)
+          setTimeout(() => setIsAutoCapturing(false), 1500)
+        }
+      }
+    } else {
+      // Para otras categorías (vocales, abecedario, algebraicas): detección de una mano
+      if (isHandDetected && autoCaptureEnabled && landmarks && landmarks.length === 21) {
+        const now = Date.now()
+        
+        // Verificar cooldown
+        if (!lastAutoCapture || (now - lastAutoCapture) > 2000) {
+          setLastAutoCapture(now)
+          setIsAutoCapturing(true)
+          
+          // Capturar inmediatamente
+          captureSample(true)
+          setTimeout(() => setIsAutoCapturing(false), 1500)
+        }
       }
     }
-  }, [bothHandsDetected, autoCaptureEnabled, landmarks, selectedCategory, currentSign])
+  }, [bothHandsDetected, isHandDetected, autoCaptureEnabled, landmarks, selectedCategory, currentSign, dualHandMode, lastAutoCapture])
 
 
   const categories = {
@@ -74,7 +103,10 @@ const DataCollection = () => {
   }
 
   const captureSample = async (isAutoCapture = false) => {
-    if (landmarks && landmarks.length === 21) {
+    // Usar la opción del usuario para determinar si requiere ambas manos
+    const hasRequiredHands = dualHandMode ? bothHandsDetected : isHandDetected
+    
+    if (landmarks && landmarks.length === 21 && hasRequiredHands) {
       const newSample = {
         landmarks: landmarks,
         category_name: currentSign,
@@ -249,7 +281,7 @@ const DataCollection = () => {
                             <MediaPipeCamera
                               onLandmarks={handleLandmarks}
                               onHandDetected={handleHandDetected}
-                              dualHandMode={selectedCategory === 'numeros' || selectedCategory === 'operaciones'}
+                              dualHandMode={dualHandMode}
                               onDualHandDetected={handleDualHandDetected}
                             />
                           ) : (
@@ -260,6 +292,38 @@ const DataCollection = () => {
                     </div>
 
                     <div className="col-md-4 d-flex flex-column gap-3">
+                      {/* Configuración de Detección */}
+                      <div className="card border-0 shadow-sm rounded-3">
+                        <div className="card-body">
+                          <h5 className="fw-bold mb-3">🎯 Configuración de Detección</h5>
+                          
+                          <div className="mb-3">
+                            <label className="form-label fw-bold">Modo de Detección:</label>
+                            <div className="d-grid gap-2">
+                              <button
+                                className={`btn ${!dualHandMode ? 'btn-primary' : 'btn-outline-primary'}`}
+                                onClick={() => handleModeChange(false)}
+                              >
+                                👋 Una Mano
+                              </button>
+                              
+                              <button
+                                className={`btn ${dualHandMode ? 'btn-primary' : 'btn-outline-primary'}`}
+                                onClick={() => handleModeChange(true)}
+                              >
+                                🤲 Dos Manos
+                              </button>
+                            </div>
+                            <small className="text-muted">
+                              {dualHandMode 
+                                ? "Detecta ambas manos para mayor precisión" 
+                                : "Detecta una sola mano para mayor flexibilidad"
+                              }
+                            </small>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="card border-0 shadow-sm rounded-3">
                         <div className="card-body">
                           <h5 className="fw-bold mb-3">⚡ Estado de Captura</h5>
@@ -282,12 +346,39 @@ const DataCollection = () => {
                               {isHandDetected ? "✅ Detectada" : "❌ No detectada"}
                             </span>
                           </div>
-                          {(selectedCategory === 'numeros' || selectedCategory === 'operaciones') && (
+                          {selectedCategory === 'operaciones' && (
                             <>
                               <div className="d-flex justify-content-between">
                                 <span>Ambas manos:</span>
                                 <span className={bothHandsDetected ? "text-success fw-bold" : "text-warning fw-bold"}>
                                   {bothHandsDetected ? "🤲 Detectadas" : "👋 Esperando..."}
+                                </span>
+                              </div>
+                              <div className="d-flex justify-content-between">
+                                <span>Captura automática:</span>
+                                <span className={autoCaptureEnabled ? "text-success fw-bold" : "text-secondary fw-bold"}>
+                                  {isAutoCapturing ? "📸 Capturando..." : autoCaptureEnabled ? "🔄 Activa" : "⏸️ Inactiva"}
+                                </span>
+                              </div>
+                              {autoCaptureEnabled && lastAutoCapture && (
+                                <div className="d-flex justify-content-between">
+                                  <span>Última captura:</span>
+                                  <span className="text-muted small">
+                                    {Math.round((Date.now() - lastAutoCapture) / 1000)}s atrás
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {selectedCategory === 'numeros' && (
+                            <>
+                              <div className="d-flex justify-content-between">
+                                <span>Manos detectadas:</span>
+                                <span className={dualHandMode ? (bothHandsDetected ? "text-success fw-bold" : "text-warning fw-bold") : (isHandDetected ? "text-success fw-bold" : "text-warning fw-bold")}>
+                                  {dualHandMode 
+                                    ? (bothHandsDetected ? "🤲 Ambas manos" : "⏳ Esperando...")
+                                    : (isHandDetected ? "👋 Una mano" : "⏳ Esperando...")
+                                  }
                                 </span>
                               </div>
                               <div className="d-flex justify-content-between">
@@ -429,9 +520,15 @@ const DataCollection = () => {
             <p className="text-muted small mb-1">✔ Asegúrate de buena iluminación</p>
             <p className="text-muted small mb-1">✔ Mantén la mano dentro del recuadro</p>
             <p className="text-muted small mb-1">✔ Haz el gesto de forma clara y estable</p>
-            {(selectedCategory === 'numeros' || selectedCategory === 'operaciones') && (
+            {selectedCategory === 'operaciones' && (
               <>
-                <p className="text-info small mb-1">🤲 Para números y operaciones: Usa ambas manos</p>
+                <p className="text-info small mb-1">🤲 Para operaciones: Usa ambas manos</p>
+                <p className="text-info small">🔄 Activa la captura automática para mayor comodidad</p>
+              </>
+            )}
+            {selectedCategory === 'numeros' && (
+              <>
+                <p className="text-info small mb-1">👋 Para números: Puedes usar una mano O ambas manos</p>
                 <p className="text-info small">🔄 Activa la captura automática para mayor comodidad</p>
               </>
             )}

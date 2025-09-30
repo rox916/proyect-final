@@ -49,23 +49,6 @@ const aiAgentService = {
     }
   },
 
-  // Obtener analíticas del usuario
-  async getAnalytics(userId) {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/analytics/${userId}`)
-      return response.data
-    } catch (error) {
-      console.error('Error obteniendo analíticas:', error)
-      return {
-        total_categories: 0,
-        total_samples: 0,
-        total_models: 0,
-        category_distribution: {},
-        accuracy_evolution: [],
-        recommendations: []
-      }
-    }
-  },
 
   // Reproducir mensaje con voz
   speakMessage(message, options = {}) {
