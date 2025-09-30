@@ -37,8 +37,24 @@ class DatosManager:
                 raise ValueError(f"Categoría '{category}' no válida")
             
             # Crear archivo específico para la seña
-            filename = f"{sign.lower()}.json"
+            # Manejar caracteres especiales en nombres de archivo de forma consistente
+            safe_sign = sign
+            if sign == "*":
+                safe_sign = "mult"
+            elif sign == "/":
+                safe_sign = "div"
+            elif sign == "=":
+                safe_sign = "equal"
+            elif sign == "+":
+                safe_sign = "plus"
+            elif sign == "-":
+                safe_sign = "minus"
+            
+            filename = f"{safe_sign.lower()}.json"
             filepath = os.path.join(self.base_dir, category_dir, filename)
+            
+            # Asegurar que el signo original se mantenga en los datos
+            original_sign = sign
             
             # Cargar datos existentes o crear nuevo
             if os.path.exists(filepath):
@@ -61,6 +77,9 @@ class DatosManager:
                 "timestamp": datetime.now().isoformat(),
                 "created_at": datetime.now().isoformat()
             }
+            
+            # Asegurar que el signo en los datos sea el original
+            data["sign"] = original_sign
             
             # Agregar muestra
             data["samples"].append(new_sample)
@@ -87,7 +106,20 @@ class DatosManager:
             
             if sign:
                 # Obtener muestras de una seña específica
-                filename = f"{sign.lower()}.json"
+                # Manejar caracteres especiales en nombres de archivo de forma consistente
+                safe_sign = sign
+                if sign == "*":
+                    safe_sign = "mult"
+                elif sign == "/":
+                    safe_sign = "div"
+                elif sign == "=":
+                    safe_sign = "equal"
+                elif sign == "+":
+                    safe_sign = "plus"
+                elif sign == "-":
+                    safe_sign = "minus"
+                
+                filename = f"{safe_sign.lower()}.json"
                 filepath = os.path.join(self.base_dir, category_dir, filename)
                 
                 if os.path.exists(filepath):
@@ -131,11 +163,13 @@ class DatosManager:
             if os.path.exists(category_path):
                 for filename in os.listdir(category_path):
                     if filename.endswith('.json'):
-                        sign_name = filename.replace('.json', '').upper()
                         filepath = os.path.join(category_path, filename)
                         
                         with open(filepath, 'r', encoding='utf-8') as f:
                             data = json.load(f)
+                        
+                        # Usar el signo original del archivo, no el nombre del archivo
+                        sign_name = data.get("sign", filename.replace('.json', ''))
                             
                         stats["signs"][sign_name] = {
                             "samples": len(data.get("samples", [])),
@@ -160,7 +194,20 @@ class DatosManager:
             if not category_dir:
                 raise ValueError(f"Categoría '{category}' no válida")
             
-            filename = f"{sign.lower()}.json"
+            # Manejar caracteres especiales en nombres de archivo de forma consistente
+            safe_sign = sign
+            if sign == "*":
+                safe_sign = "mult"
+            elif sign == "/":
+                safe_sign = "div"
+            elif sign == "=":
+                safe_sign = "equal"
+            elif sign == "+":
+                safe_sign = "plus"
+            elif sign == "-":
+                safe_sign = "minus"
+            
+            filename = f"{safe_sign.lower()}.json"
             filepath = os.path.join(self.base_dir, category_dir, filename)
             
             if os.path.exists(filepath):

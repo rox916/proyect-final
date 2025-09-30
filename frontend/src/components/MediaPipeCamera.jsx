@@ -2,12 +2,13 @@ import React, { useRef, useEffect, useState } from 'react'
 import { Hands } from '@mediapipe/hands'
 import './MediaPipeCamera.css'
 
-const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
+const MediaPipeCamera = ({ onLandmarks, onHandDetected, dualHandMode = false, onDualHandDetected }) => {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const handsRef = useRef(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [error, setError] = useState(null)
+  const [bothHandsDetected, setBothHandsDetected] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -16,13 +17,13 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
       try {
         console.log('🚀 Iniciando MediaPipe Camera...')
         
-        // Obtener acceso a la cámara
+        // Obtener acceso a la cámara con mejor configuración
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
-            width: { ideal: 640, max: 800 }, 
-            height: { ideal: 480, max: 600 }, 
+            width: { ideal: 1280, max: 1920 }, 
+            height: { ideal: 720, max: 1080 }, 
             facingMode: 'user',
-            aspectRatio: 4/3
+            frameRate: { ideal: 30, max: 60 }
           }
         })
 
@@ -48,10 +49,10 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
         })
 
         hands.setOptions({
-          maxNumHands: 1,
-          modelComplexity: 0,
-          minDetectionConfidence: 0.7,
-          minTrackingConfidence: 0.5
+          maxNumHands: dualHandMode ? 2 : 1,
+          modelComplexity: 1, // Máxima complejidad para mejor detección
+          minDetectionConfidence: 0.5, // Reducir para detectar más fácilmente
+          minTrackingConfidence: 0.5 // Reducir para mantener seguimiento
         })
 
         hands.onResults((results) => {
@@ -104,58 +105,87 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
           ctx.drawImage(videoRef.current, offsetX, offsetY, drawWidth, drawHeight)
 
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            const landmarks = results.multiHandLandmarks[0]
+            const handsDetected = results.multiHandLandmarks.length
+            const isBothHands = handsDetected === 2
             
-            // Llamar callbacks
-            if (onLandmarks) onLandmarks(landmarks)
-            if (onHandDetected) onHandDetected(true)
+            // Actualizar estado de ambas manos
+            if (dualHandMode) {
+              setBothHandsDetected(isBothHands)
+              if (onDualHandDetected) onDualHandDetected(isBothHands)
+            }
             
-            // Dibujar landmarks
-            landmarks.forEach((landmark, index) => {
-              const x = landmark.x * canvas.width
-              const y = landmark.y * canvas.height
-              
-              // Punto rojo
-              ctx.beginPath()
-              ctx.arc(x, y, 6, 0, 2 * Math.PI)
-              ctx.fillStyle = '#FF0000'
-              ctx.fill()
-              ctx.strokeStyle = '#FFFFFF'
-              ctx.lineWidth = 2
-              ctx.stroke()
-            })
-
-            // Dibujar conexiones
-            const connections = [
-              [0, 1], [1, 2], [2, 3], [3, 4], // Pulgar
-              [0, 5], [5, 6], [6, 7], [7, 8], // Índice
-              [5, 9], [9, 10], [10, 11], [11, 12], // Medio
-              [9, 13], [13, 14], [14, 15], [15, 16], // Anular
-              [13, 17], [17, 18], [18, 19], [19, 20], // Meñique
-              [0, 17] // Base
-            ]
-
-            ctx.strokeStyle = '#00FF00'
-            ctx.lineWidth = 3
-            connections.forEach(([start, end]) => {
-              if (landmarks[start] && landmarks[end]) {
-                ctx.beginPath()
-                ctx.moveTo(
-                  landmarks[start].x * canvas.width,
-                  landmarks[start].y * canvas.height
-                )
-                ctx.lineTo(
-                  landmarks[end].x * canvas.width,
-                  landmarks[end].y * canvas.height
-                )
-                ctx.stroke()
+            // Dibujar indicador de manos detectadas
+            ctx.fillStyle = '#00FF00'
+            ctx.font = '20px Arial'
+            ctx.fillText(`Manos: ${handsDetected}`, 10, 30)
+            
+            // Procesar cada mano detectada
+            results.multiHandLandmarks.forEach((landmarks, handIndex) => {
+              // Llamar callbacks para la primera mano (compatibilidad)
+              if (handIndex === 0) {
+                if (onLandmarks) onLandmarks(landmarks)
+                if (onHandDetected) onHandDetected(true)
               }
+              
+              // Color diferente para cada mano
+              const handColor = handIndex === 0 ? '#FF0000' : '#0000FF'
+              const connectionColor = handIndex === 0 ? '#00FF00' : '#00FFFF'
+              
+              // Dibujar landmarks más visibles
+              landmarks.forEach((landmark, index) => {
+                // Calcular posición corregida considerando el offset y escalado del video
+                const x = offsetX + (landmark.x * drawWidth)
+                const y = offsetY + (landmark.y * drawHeight)
+                
+                // Punto más grande y visible
+                ctx.beginPath()
+                ctx.arc(x, y, 8, 0, 2 * Math.PI)
+                ctx.fillStyle = handColor
+                ctx.fill()
+                ctx.strokeStyle = '#FFFFFF'
+                ctx.lineWidth = 3
+                ctx.stroke()
+              })
+
+              // Dibujar conexiones
+              const connections = [
+                [0, 1], [1, 2], [2, 3], [3, 4], // Pulgar
+                [0, 5], [5, 6], [6, 7], [7, 8], // Índice
+                [5, 9], [9, 10], [10, 11], [11, 12], // Medio
+                [9, 13], [13, 14], [14, 15], [15, 16], // Anular
+                [13, 17], [17, 18], [18, 19], [19, 20], // Meñique
+                [0, 17] // Base
+              ]
+
+              ctx.strokeStyle = connectionColor
+              ctx.lineWidth = 3
+              connections.forEach(([start, end]) => {
+                if (landmarks[start] && landmarks[end]) {
+                  ctx.beginPath()
+                  ctx.moveTo(
+                    offsetX + (landmarks[start].x * drawWidth),
+                    offsetY + (landmarks[start].y * drawHeight)
+                  )
+                  ctx.lineTo(
+                    offsetX + (landmarks[end].x * drawWidth),
+                    offsetY + (landmarks[end].y * drawHeight)
+                  )
+                  ctx.stroke()
+                }
+              })
             })
 
-            console.log('✅ Mano detectada con landmarks')
+            console.log(`✅ ${handsDetected} mano(s) detectada(s) con landmarks`)
           } else {
             if (onHandDetected) onHandDetected(false)
+            if (dualHandMode && onDualHandDetected) onDualHandDetected(false)
+            setBothHandsDetected(false)
             console.log('❌ No se detectó mano')
+            
+            // Dibujar indicador de "no manos detectadas"
+            ctx.fillStyle = '#FF0000'
+            ctx.font = '20px Arial'
+            ctx.fillText('No se detectan manos', 10, 30)
           }
         })
 
@@ -176,7 +206,7 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
           }
           
           if (isMounted) {
-            setTimeout(processFrame, 100) // 10 FPS
+            setTimeout(processFrame, 100) // 10 FPS para mejor responsividad
           }
         }
 
@@ -230,6 +260,13 @@ const MediaPipeCamera = ({ onLandmarks, onHandDetected }) => {
         }`}>
           {isInitialized ? '✓ MediaPipe' : '⏳ Cargando...'}
         </div>
+        {dualHandMode && (
+          <div className={`mediapipe-status-item ${
+            bothHandsDetected ? 'mediapipe-status-active' : 'mediapipe-status-warning'
+          }`}>
+            {bothHandsDetected ? '🤲 Ambas manos detectadas' : '👋 Esperando ambas manos...'}
+          </div>
+        )}
         {error && (
           <div className="mediapipe-status-item mediapipe-status-error">
             <div>Error: {error}</div>
